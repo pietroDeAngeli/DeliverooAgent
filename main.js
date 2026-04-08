@@ -3,8 +3,8 @@ import * as dotenv from 'dotenv';
 //import 'dotenv/config'
 import { DjsConnect } from "@unitn-asa/deliveroo-js-sdk/client";
 
-import { Agent } from "./agent.js";
-import { World } from "./WorldMap.js";
+import { World, Agent } from "./Belief.js";
+import * as utils from "./utils.js";
 
 dotenv.config();
 const url = process.env.HOST;
@@ -84,16 +84,16 @@ const mainLoop = setInterval(async () => {
     isBusy = true;
 
     try {
-        const availableParcels = worldMap.get_not_carried_parcels();
+        const availableParcels = utils.get_not_carried_parcels(worldMap.parcels);
 
         if (availableParcels.length > 0) {
             // --- Start mission ---
             console.log("Pack available. Starting mission...");
             
-            const bestParcel = worldMap.get_best_parcel({ x: myAgent.x, y: myAgent.y });
+            const bestParcel = utils.get_best_parcel({ x: myAgent.x, y: myAgent.y }, worldMap.parcels);
             if (!bestParcel) return;
 
-            const pathToParcel = worldMap.get_shortest_path({ x: myAgent.x, y: myAgent.y }, bestParcel);
+            const pathToParcel = utils.get_shortest_path({ x: myAgent.x, y: myAgent.y }, bestParcel, worldMap);
             if (!pathToParcel) {
                 console.log("No path to the parcel!");
                 return;
@@ -101,9 +101,9 @@ const mainLoop = setInterval(async () => {
 
             // go to parcel
             for (const dir of pathToParcel) {
-                const nextPos = nextPosition(myAgent, dir);
+                const nextPos = nextPosition({ x: myAgent.x, y: myAgent.y }, dir);
 
-                if (worldMap.is_cell_occupied(nextPos, myAgent.id)) {
+                if (utils.is_cell_occupied(nextPos, myAgent.id, worldMap.other_agents, worldMap.crates)) {
                     console.log(`Cell (${nextPos.x}, ${nextPos.y}) occupied, replanning...`);
                     break;
                 }
@@ -122,17 +122,17 @@ const mainLoop = setInterval(async () => {
             if (pickedParcels && pickedParcels.length > 0) {
                 console.log("Parcels picked up:", pickedParcels);
 
-                const deliveryLocation = worldMap.get_closest("delivery", { x: myAgent.x, y: myAgent.y });
+                const deliveryLocation = utils.get_closest("delivery", { x: myAgent.x, y: myAgent.y }, worldMap.tiles);
                 if (!deliveryLocation) return;
 
-                const pathToDelivery = worldMap.get_shortest_path({ x: myAgent.x, y: myAgent.y }, deliveryLocation);
+                const pathToDelivery = utils.get_shortest_path({ x: myAgent.x, y: myAgent.y }, deliveryLocation, worldMap);
                 if (!pathToDelivery) return;
 
                 // go to delivery
                 for (const dir of pathToDelivery) {
-                    const nextPos = nextPosition(myAgent, dir);
+                    const nextPos = nextPosition({ x: myAgent.x, y: myAgent.y }, dir);
 
-                    if (worldMap.is_cell_occupied(nextPos, myAgent.id)) {
+                    if (utils.is_cell_occupied(nextPos, myAgent.id, worldMap.other_agents, worldMap.crates)) {
                         console.log(`Cell (${nextPos.x}, ${nextPos.y}) occupied, replanning...`);
                         break;
                     }
@@ -147,7 +147,7 @@ const mainLoop = setInterval(async () => {
                 }
 
                 // deliver (only if agent actually reached a delivery tile)
-                if (worldMap.tile_is('delivery', { x: myAgent.x, y: myAgent.y })) {
+                if (utils.tile_is('delivery', { x: myAgent.x, y: myAgent.y }, worldMap.tiles)) {
                     await socket.emitPutdown();
                     console.log("Mission completed successfully!");
                     worldMap.parcels.clear();
@@ -159,17 +159,17 @@ const mainLoop = setInterval(async () => {
         } else {
             // --- NO PACKAGES: EXPLORE ---
             console.log("No parcels available. Going to the spawn");
-            const closest_spawn = worldMap.get_closest("spawn", { x: myAgent.x, y: myAgent.y });
-            const pathToSpawn = worldMap.get_shortest_path({ x: myAgent.x, y: myAgent.y }, closest_spawn);
+            const closest_spawn = utils.get_closest("spawn", { x: myAgent.x, y: myAgent.y }, worldMap.tiles);
+            const pathToSpawn = utils.get_shortest_path({ x: myAgent.x, y: myAgent.y }, closest_spawn, worldMap);
             if (!pathToSpawn) {
                 console.log("No path to spawn!");
                 return;
             }
 
             for (const dir of pathToSpawn) {
-                const nextPos = nextPosition(myAgent, dir);
+                const nextPos = nextPosition({ x: myAgent.x, y: myAgent.y }, dir);
 
-                if (worldMap.is_cell_occupied(nextPos, myAgent.id)) {
+                if (utils.is_cell_occupied(nextPos, myAgent.id, worldMap.other_agents, worldMap.crates)) {
                     console.log(`Cell (${nextPos.x}, ${nextPos.y}) occupied, replanning...`);
                     break;
                 }
