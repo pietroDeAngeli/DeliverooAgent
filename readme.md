@@ -23,9 +23,15 @@ git clone https://github.com/pietroDeAngeli/Deliveroo_Agent
 cd Deliveroo_Agent
 npm init
 npm install @unitn-asa/deliveroo-js-sdk
+npm install dotenv
+```
+Create a `.env` with the following fields
+```bash 
+HOST=YOUR_HOST_NAME (e.g. http://localhost:8080)
+TOKEN=YOUR_TOKEN
 ```
 
-To run the agent's main create the credentials in the `.env` file and run:
+Run the following commands:
 ```bash 
 node main.js
 ```

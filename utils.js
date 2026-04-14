@@ -9,13 +9,13 @@ export function get_not_carried_parcels(parcels) {
     return Array.from(parcels.values()).filter(p => !p.carriedBy);
 }
 
-export function get_best_parcel(agent_position, parcels) { 
+export function get_best_parcel(agent_position, parcels, tiles) { 
     const notCarriedParcels = get_not_carried_parcels(parcels);
     if (notCarriedParcels.length === 0) return null;
 
     return notCarriedParcels.reduce((best, current) => {
-        const bestUt = best.get_utility(agent_position);
-        const currentUt = current.get_utility(agent_position);
+        const bestUt = best.get_utility(agent_position, tiles);
+        const currentUt = current.get_utility(agent_position, tiles);
         return currentUt > bestUt ? current : best;
     });
 }
@@ -31,22 +31,6 @@ export function get_shortest_path(start, target, worldMap) {
         worldMap.other_agents
     );
 }
-
-export function get_closest_spawn_location(agent_position, tiles) {//TODO im not using it
-    const spawnLocations = Array.from(tiles.entries())
-        .filter(([_, type]) => type === '1')
-        .map(([key, _]) => {
-            const [x, y] = key.split(',').map(Number);
-            return { x, y };
-        });
-    if (spawnLocations.length === 0) return null;
-    const closest = spawnLocations.reduce((acc, curr) => {
-        const accDistance = get_distance(agent_position, acc);
-        const currDistance = get_distance(agent_position, curr);
-        return currDistance < accDistance ? curr : acc;
-    }, spawnLocations[0]);
-    return closest;
-}   
 
 export function get_closest(type, agent_position, tiles) {
     const tileType = map_tile_type(type);

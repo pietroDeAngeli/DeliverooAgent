@@ -62,8 +62,13 @@ class Parcel {
         this.timestamp = timestamp;
     }
 
-    get_utility(agentPosition) { 
-        const distance = utils.get_distance(agentPosition, { x: this.x, y: this.y });
+    get_utility(agentPosition, tiles) { 
+        const distance = 
+            utils.get_distance(agentPosition, { x: this.x, y: this.y }) + 
+            utils.get_distance(
+                utils.get_closest("delivery", { x: this.x, y: this.y }, tiles)
+                , { x: this.x, y: this.y })
+        ;
         return distance > 0 ? this.reward / distance : this.reward;
     }
 }

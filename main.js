@@ -1,9 +1,10 @@
 import * as dotenv from 'dotenv';
 
-//import 'dotenv/config'
 import { DjsConnect } from "@unitn-asa/deliveroo-js-sdk/client";
 
 import { World, Agent } from "./Belief.js";
+import { generateDesires } from "./Desire.js";
+import { reviseIntention } from "./Intentions.js";
 import * as utils from "./utils.js";
 
 dotenv.config();
@@ -19,7 +20,6 @@ socket.onConnect( () => {
 socket.onDisconnect( () => {
     console.log( "Disconnected from the server" );
     if (mainLoop) clearInterval(mainLoop);
-    isBusy = false;
 } );
 
 socket.onConfig( config => {
@@ -29,11 +29,16 @@ socket.onConfig( config => {
 
 let myAgent = undefined; //Agent()
 let worldMap = undefined //World()
-let isBusy = false;
+let carrying = Array();
+let desires = Array();
+let currentIntention = null;
+
 
 socket.onYou( (agent) => {
-    if (typeof agent === 'object' && agent !== null) {
-        myAgent = new Agent(agent);
+    if (!myAgent) myAgent = new Agent(agent);
+    else {
+        myAgent.x = agent.x;
+        myAgent.y = agent.y;
     }
 });
 
@@ -79,18 +84,27 @@ socket.onSensing( ( sensing ) => {
 
 const mainLoop = setInterval(async () => {
     if (!socket.connected) return;
-    if (isBusy || !myAgent || !worldMap) return;
-
-    isBusy = true;
+    if (!myAgent || !worldMap) return;
 
     try {
+        desires = generateDesires(myAgent, worldMap, carrying);
+
+        currentIntention = reviseIntention(currentIntention, desires, worldMap, carrying);
+
+        //plan and execute currentIntention
+
+
+
+
+
+
         const availableParcels = utils.get_not_carried_parcels(worldMap.parcels);
 
         if (availableParcels.length > 0) {
             // --- Start mission ---
             console.log("Pack available. Starting mission...");
             
-            const bestParcel = utils.get_best_parcel({ x: myAgent.x, y: myAgent.y }, worldMap.parcels);
+            const bestParcel = utils.get_best_parcel({ x: myAgent.x, y: myAgent.y }, worldMap.parcels, worldMap.tiles);
             if (!bestParcel) return;
 
             const pathToParcel = utils.get_shortest_path({ x: myAgent.x, y: myAgent.y }, bestParcel, worldMap);
@@ -119,8 +133,9 @@ const mainLoop = setInterval(async () => {
 
             // Pick up
             const pickedParcels = await socket.emitPickup();
-            if (pickedParcels && pickedParcels.length > 0) {
-                console.log("Parcels picked up:", pickedParcels);
+            worldMap.update_parcels(pickedParcels);
+            carrying = pickedParcels.filter(p => p.carriedBy === myAgent.id);
+            if (carrying && carrying.length > 0) {
 
                 const deliveryLocation = utils.get_closest("delivery", { x: myAgent.x, y: myAgent.y }, worldMap.tiles);
                 if (!deliveryLocation) return;
@@ -149,6 +164,7 @@ const mainLoop = setInterval(async () => {
                 // deliver (only if agent actually reached a delivery tile)
                 if (utils.tile_is('delivery', { x: myAgent.x, y: myAgent.y }, worldMap.tiles)) {
                     await socket.emitPutdown();
+                    carrying.length = 0; // Clear carrying array
                     console.log("Mission completed successfully!");
                     worldMap.parcels.clear();
                 } else {
@@ -186,7 +202,5 @@ const mainLoop = setInterval(async () => {
         }
     } catch (error) {
         console.error(error);
-    } finally {
-        isBusy = false;
     }
 }, 500); 
