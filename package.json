@@ -1,0 +1,23 @@
+{
+  "name": "agent",
+  "version": "1.0.0",
+  "description": "You need to connect to a Deliveroo server. If you want to run it locally move to the next section, otherwise skip it.",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pietroDeAngeli/Deliveroo_Agent.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/pietroDeAngeli/Deliveroo_Agent/issues"
+  },
+  "homepage": "https://github.com/pietroDeAngeli/Deliveroo_Agent#readme",
+  "dependencies": {
+    "@unitn-asa/deliveroo-js-sdk": "^1.3.3",
+    "dotenv": "^17.4.1"
+  }
+}

@@ -1,6 +1,5 @@
 .env
 node_modules/
 package-lock.json
-package.json
 todo    
 report.tex
