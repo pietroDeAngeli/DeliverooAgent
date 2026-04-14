@@ -1,4 +1,7 @@
-export function reviseIntention(currentIntention, desires, worldMap, carrying) {
+import type { Desire } from "./Desire.ts";
+import type { World, Parcel } from "./Belief.ts";
+
+export function reviseIntention(currentIntention: Desire | null, desires: Desire[], worldMap: World, carrying: Parcel[]): Desire | null {
     if (!desires.length) return null;
 
     const bestDesire = desires[0];
@@ -16,7 +19,7 @@ export function reviseIntention(currentIntention, desires, worldMap, carrying) {
     return currentIntention;
 }
 
-function isIntentionValid(intention, worldMap, carrying) {
+function isIntentionValid(intention: Desire | null, worldMap: World, carrying: Parcel[]): boolean {
     if (!intention) return false;
 
     if (intention.type === "go_delivery") {
@@ -25,9 +28,11 @@ function isIntentionValid(intention, worldMap, carrying) {
 
     if (intention.type === "go_pickup") {
         const parcels = worldMap.parcels;
+        
+        // Updated to use p.pos.x and p.pos.y to match our new class structure
         return Array.from(parcels.values()).some(
-            p => p.x === intention.x_target &&
-                 p.y === intention.y_target &&
+            p => p.pos.x === intention.x_target &&
+                 p.pos.y === intention.y_target &&
                  !p.carriedBy
         );
     }

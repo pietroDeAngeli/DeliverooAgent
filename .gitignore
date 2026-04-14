@@ -1,5 +1,6 @@
 .env
 node_modules/
 package-lock.json
-todo    
+todo
+dist
 report.tex

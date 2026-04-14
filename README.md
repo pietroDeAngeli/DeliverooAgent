@@ -17,13 +17,11 @@ You can see the the world using [http://localhost:8080/](http://localhost:8080/)
 
 And creating yourself the credentials. 
 
-### Agent download and run
+### Setup
 ```bash
 git clone https://github.com/pietroDeAngeli/Deliveroo_Agent
 cd Deliveroo_Agent
-npm init
-npm install @unitn-asa/deliveroo-js-sdk
-npm install dotenv
+npm run setup
 ```
 Create a `.env` with the following fields
 ```bash 
@@ -31,9 +29,19 @@ HOST=YOUR_HOST_NAME (e.g. http://localhost:8080)
 TOKEN=YOUR_TOKEN
 ```
 
-Run the following commands:
-```bash 
-node main.js
+### Running the Agent
+
+This project is written in TypeScript and uses ES Modules. We have provided npm scripts to handle the compilation and execution automatically.
+
+To compile and run the agent in one command:
+```bash
+npm start
+```
+
+#### For active development (Watch Mode):
+If you are modifying the code, you can run the development script. This keeps the compiler open whilst you modify the programs:
+```bash
+npm run dev
 ```
 
 # Note

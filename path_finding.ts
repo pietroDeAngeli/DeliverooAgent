@@ -1,19 +1,35 @@
-function bfs(start, target, tiles, width, height, crates, otherAgents) {
+import type { Position, Crate, OpponentAgent } from './Belief.ts';
+
+interface QueueNode {
+    x: number;
+    y: number;
+    path: string[];
+}
+
+function bfs(
+    start: Position, 
+    target: Position, 
+    tiles: Map<string, string>, 
+    width: number, 
+    height: number, 
+    crates: Map<string, Crate>, 
+    otherAgents: Map<string, OpponentAgent>
+): string[] | null {
     if (!start || !target || !tiles) return null;
 
-    const queue = [{ x: start.x, y: start.y, path: [] }];
-    const visited = new Set([`${start.x},${start.y}`]);
-    const cratePositions = new Set([...crates.values()].map(c => `${c.x},${c.y}`));
-    const agentPositions = new Set([...otherAgents.values()].map(a => `${a.x},${a.y}`));
+    const queue: QueueNode[] = [{ x: start.x, y: start.y, path: [] }];
+    const visited = new Set<string>([`${start.x},${start.y}`]);
     
-    const oneWayMap = {
+    const cratePositions = new Set([...crates.values()].map(c => `${c.pos.x},${c.pos.y}`));
+    const agentPositions = new Set([...otherAgents.values()].map(a => `${a.pos.x},${a.pos.y}`));
+    
+    const oneWayMap: Record<string, string> = {
         '↑': 'up',
         '↓': 'down',
         '←': 'left',
         '→': 'right'
     };
 
-    // Kept your direction logic exactly as provided
     const directions = [
         { x: 0, y: -1, name: 'down' },
         { x: 0, y: 1, name: 'up' },
@@ -22,15 +38,17 @@ function bfs(start, target, tiles, width, height, crates, otherAgents) {
     ];
 
     while (queue.length > 0) {
-        const { x, y, path } = queue.shift();
+        const current = queue.shift();
+        if (!current) break; 
+
+        const { x, y, path } = current;
 
         if (x === target.x && y === target.y) return path;
 
         const currentTileType = tiles.get(`${x},${y}`);
 
         for (const dir of directions) {
-            // One way check
-            if (oneWayMap[currentTileType] && oneWayMap[currentTileType] !== dir.name) {
+            if (currentTileType && oneWayMap[currentTileType] && oneWayMap[currentTileType] !== dir.name) {
                 continue; 
             }
 
@@ -39,7 +57,6 @@ function bfs(start, target, tiles, width, height, crates, otherAgents) {
             const key = `${nextX},${nextY}`;
             const nextTileType = tiles.get(key);
 
-            // Validation: tile exists, not visited, not a wall, no agents and no crates
             if (
                 nextTileType !== undefined &&
                 nextTileType !== '0' &&
