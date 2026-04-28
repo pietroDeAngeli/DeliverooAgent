@@ -20,7 +20,19 @@ export function get_best_parcel(agent_position: Position, parcels: Map<string, P
     });
 }
 
-export function get_shortest_path(start: Position, target: Position, worldMap: World): string[] | null {
+// Agents stationary for at least this many consecutive sensing updates are treated as BFS obstacles
+const STATIONARY_OBSTACLE_THRESHOLD = 3;
+
+//TODO: check if it makes sense or if it should be treated in another way
+
+export function get_shortest_path(start: Position, target: Position, worldMap: World, extraBlocked: Set<string> = new Set()): string[] | null {
+    const stationaryBlocked = new Set<string>();
+    for (const agent of worldMap.other_agents.values()) {
+        if (agent.stationaryTicks >= STATIONARY_OBSTACLE_THRESHOLD) {
+            stationaryBlocked.add(`${agent.pos.x},${agent.pos.y}`);
+        }
+    }
+    const allBlocked = new Set([...stationaryBlocked, ...extraBlocked]);
     return bfs(
         start,
         target,
@@ -28,7 +40,7 @@ export function get_shortest_path(start: Position, target: Position, worldMap: W
         worldMap.width,
         worldMap.height,
         worldMap.crates,
-        worldMap.other_agents
+        allBlocked
     );
 }
 
@@ -57,15 +69,29 @@ export function get_predicted_occupied_cells(other_agents: Map<string, OpponentA
     const occupied = new Set<string>();
 
     for (const agent of other_agents.values()) {
-        occupied.add(`${agent.pos.x},${agent.pos.y}`);
+        const { x, y } = agent.pos;
+        occupied.add(`${x},${y}`);
 
-        let next: Position | null = null;
-        if (agent.direction === 'up') next = { x: agent.pos.x, y: agent.pos.y + 1 };
-        if (agent.direction === 'down') next = { x: agent.pos.x, y: agent.pos.y - 1 };
-        if (agent.direction === 'left') next = { x: agent.pos.x - 1, y: agent.pos.y };
-        if (agent.direction === 'right') next = { x: agent.pos.x + 1, y: agent.pos.y };
+        if (agent.direction === null) {
+            // First observation: direction unknown — conservatively block all 4 neighbours
+            // (we don't know where they came from or where they're going)
+            occupied.add(`${x},${y + 1}`);
+            occupied.add(`${x},${y - 1}`);
+            occupied.add(`${x - 1},${y}`);
+            occupied.add(`${x + 1},${y}`);
+        } else if (agent.direction !== 'none') {
+            // Block predicted next destination (where they'll go next)
+            let nx = x, ny = y;   // next
+            let px = x, py = y;   // previous (source tile, still locked during transit)
+            if (agent.direction === 'up')    { ny = y + 1; py = y - 1; }
+            if (agent.direction === 'down')  { ny = y - 1; py = y + 1; }
+            if (agent.direction === 'left')  { nx = x - 1; px = x + 1; }
+            if (agent.direction === 'right') { nx = x + 1; px = x - 1; }
 
-        if (next) occupied.add(`${next.x},${next.y}`);
+            occupied.add(`${nx},${ny}`);  // destination of next move
+            occupied.add(`${px},${py}`);  // source tile: still locked during the transit animation
+        }
+        // direction === 'none': agent stationary, current pos is enough
     }
 
     return occupied;

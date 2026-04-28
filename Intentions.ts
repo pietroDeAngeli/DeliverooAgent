@@ -12,6 +12,12 @@ export function reviseIntention(currentIntention: Desire | null, desires: Desire
         return bestDesire;
     }
 
+    // Explore is a low-priority fallback: immediately yield to any pickup or delivery
+    if (currentIntention.type === 'explore' &&
+        (bestDesire.type === 'go_pickup' || bestDesire.type === 'go_delivery')) {
+        return bestDesire;
+    }
+
     if (bestDesire.utility > currentIntention.utility * 1.2) {
         return bestDesire;
     }

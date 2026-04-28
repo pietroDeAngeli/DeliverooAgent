@@ -39,11 +39,13 @@ class Agent {
 class OpponentAgent extends Agent {
     public timestamp: number;
     public direction: string | null;
+    public stationaryTicks: number;
 
     constructor(agent: RawEntity, timestamp: number) {
         super(agent);
         this.timestamp = timestamp;
         this.direction = null;
+        this.stationaryTicks = 0;
     }
 }
 
@@ -74,16 +76,31 @@ class Parcel {
         this.timestamp = timestamp;
     }
 
-    public get_utility(agentPosition: Position, tiles: Map<string, string>): number {
-        const distance =
-            utils.get_distance(agentPosition, this.pos) +
-            utils.get_distance(
-                // Fallback to parcel position if no delivery found
-                utils.get_closest("delivery", this.pos, tiles) || this.pos,
-                this.pos
-            );
+    public get_utility(agentPosition: Position, tiles: Map<string, string>, otherAgents?: Map<string, OpponentAgent>, movementDuration: number = 200, parcelDecayInterval: number = 1e6): number {
+        //TODO: if the closest delivery is occupied by a stationary enemy, should we target the next closest one instead? (currently we just accept the penalty and hope the enemy moves away)
+        const deliveryPos = utils.get_closest("delivery", this.pos, tiles) || this.pos;
+        const distToParcel = utils.get_distance(agentPosition, this.pos);
+        const distParcelToDelivery = utils.get_distance(this.pos, deliveryPos);
+        const totalSteps = distToParcel + distParcelToDelivery;
 
-        return distance > 0 ? this.reward / distance : this.reward;
+        // Project the reward at the time of delivery, accounting for server-side decay
+        // Each step costs (movementDuration / parcelDecayInterval) reward points
+        const expectedReward = this.reward - totalSteps * (movementDuration / parcelDecayInterval);
+        if (expectedReward <= 0) return 0;
+
+        let utility = totalSteps > 0 ? expectedReward / totalSteps : expectedReward;
+
+        // Penalize if an opponent is closer to this parcel than we are (they'll likely pick it up first)
+        if (otherAgents) {
+            for (const agent of otherAgents.values()) {
+                if (utils.get_distance(agent.pos, this.pos) < distToParcel) {
+                    utility *= 0.4;
+                    break;
+                }
+            }
+        }
+
+        return utility;
     }
 }
 
@@ -95,6 +112,13 @@ class World {
     public parcels: Map<string, Parcel>;
     public crates: Map<string, Crate>;
     public lifespan: number;
+    public movementDuration: number;   // ms per step (from config.GAME.player.movement_duration)
+    public parcelDecayIntervalMs: number; // ms per 1 reward point lost (from config.GAME.parcels.decaying_event, e.g. "1s" → 1000)
+
+    /** Reward points lost per movement step: movementDuration / parcelDecayIntervalMs */
+    get decayPerStep(): number {
+        return this.movementDuration / this.parcelDecayIntervalMs;
+    }
 
     constructor(width: number, height: number, tiles: RawTile[]) {
         this.width = width + 1;
@@ -109,6 +133,8 @@ class World {
         this.other_agents = new Map();
         this.crates = new Map();
         this.lifespan = 1500;
+        this.movementDuration = 200;      // safe default until onConfig fires
+        this.parcelDecayIntervalMs = 1e6;   // safe default: no decay
     }
 
     public update_parcels(parcels: RawParcel[]): void {
@@ -149,6 +175,16 @@ class World {
         });
     }
 
+    // Remove the first parcel found at the given position from the belief set
+    public removeParcelAt(pos: Position): void {
+        for (const [id, parcel] of this.parcels.entries()) {
+            if (parcel.pos.x === pos.x && parcel.pos.y === pos.y) {
+                this.parcels.delete(id);
+                break;
+            }
+        }
+    }
+
     public update_agents(agents: RawEntity[]): void {
         const now = Date.now();
         const seenIds = new Set<string>();
@@ -160,6 +196,9 @@ class World {
             const existingAgent = this.other_agents.get(a.id);
             if (existingAgent) {
                 existingAgent.direction = utils.compute_direction(existingAgent.pos, newPos);
+                existingAgent.stationaryTicks = existingAgent.direction === 'none'
+                    ? existingAgent.stationaryTicks + 1
+                    : 0;
                 existingAgent.pos = newPos;
                 existingAgent.timestamp = now;
             } else {
