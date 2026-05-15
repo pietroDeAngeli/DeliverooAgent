@@ -1,5 +1,6 @@
-import { bfs } from './path_finding.ts';
-import type { Position, Parcel, World, OpponentAgent, Crate } from './Belief.ts';
+import { bfsFlood, PathFinder } from './path_finding.ts';
+export { bfsFlood, PathFinder };
+import type { Position, Parcel, World, OpponentAgent, Crate } from './BDI/Belief.ts';
 
 export function get_distance(position1: Position, position2: Position): number {
     return Math.abs(position1.x - position2.x) + Math.abs(position1.y - position2.y);
@@ -7,17 +8,6 @@ export function get_distance(position1: Position, position2: Position): number {
 
 export function get_not_carried_parcels(parcels: Map<string, Parcel>): Parcel[] {
     return Array.from(parcels.values()).filter(p => !p.carriedBy);
-}
-
-export function get_best_parcel(agent_position: Position, parcels: Map<string, Parcel>, tiles: Map<string, string>): Parcel | null { 
-    const notCarriedParcels = get_not_carried_parcels(parcels);
-    if (notCarriedParcels.length === 0) return null;
-
-    return notCarriedParcels.reduce((best, current) => {
-        const bestUt = best.get_utility(agent_position, tiles);
-        const currentUt = current.get_utility(agent_position, tiles);
-        return currentUt > bestUt ? current : best;
-    });
 }
 
 // Agents stationary for at least this many consecutive sensing updates are treated as BFS obstacles
@@ -33,15 +23,7 @@ export function get_shortest_path(start: Position, target: Position, worldMap: W
         }
     }
     const allBlocked = new Set([...stationaryBlocked, ...extraBlocked]);
-    return bfs(
-        start,
-        target,
-        worldMap.tiles,
-        worldMap.width,
-        worldMap.height,
-        worldMap.crates,
-        allBlocked
-    );
+    return bfsFlood(start, worldMap.tiles, worldMap.crates, allBlocked).getPath(target);
 }
 
 export function get_closest(type: string, agent_position: Position, tiles: Map<string, string>): Position | null {
@@ -61,40 +43,32 @@ export function get_closest(type: string, agent_position: Position, tiles: Map<s
         return currDistance < accDistance ? curr : acc;
     }, locations[0]);
     
-    console.log(`Closest ${type} location: (${closest.x}, ${closest.y})`);
     return closest;
 }
 
-export function get_predicted_occupied_cells(other_agents: Map<string, OpponentAgent>): Set<string> { 
-    const occupied = new Set<string>();
 
+export function is_collision_predicted(cx: number, cy: number, other_agents: Map<string, OpponentAgent>): boolean {
     for (const agent of other_agents.values()) {
         const { x, y } = agent.pos;
-        occupied.add(`${x},${y}`);
+
+        // Current position is always blocked
+        if (x === cx && y === cy) return true;
 
         if (agent.direction === null) {
-            // First observation: direction unknown — conservatively block all 4 neighbours
-            // (we don't know where they came from or where they're going)
-            occupied.add(`${x},${y + 1}`);
-            occupied.add(`${x},${y - 1}`);
-            occupied.add(`${x - 1},${y}`);
-            occupied.add(`${x + 1},${y}`);
+            // Direction unknown: conservatively block all 4 neighbours
+            if ((x === cx && Math.abs(y - cy) === 1) || (y === cy && Math.abs(x - cx) === 1)) return true;
         } else if (agent.direction !== 'none') {
-            // Block predicted next destination (where they'll go next)
-            let nx = x, ny = y;   // next
-            let px = x, py = y;   // previous (source tile, still locked during transit)
+            let nx = x, ny = y;   // predicted next position
+            let px = x, py = y;   // source tile still locked during transit
             if (agent.direction === 'up')    { ny = y + 1; py = y - 1; }
             if (agent.direction === 'down')  { ny = y - 1; py = y + 1; }
             if (agent.direction === 'left')  { nx = x - 1; px = x + 1; }
             if (agent.direction === 'right') { nx = x + 1; px = x - 1; }
-
-            occupied.add(`${nx},${ny}`);  // destination of next move
-            occupied.add(`${px},${py}`);  // source tile: still locked during the transit animation
+            if ((nx === cx && ny === cy) || (px === cx && py === cy)) return true;
         }
-        // direction === 'none': agent stationary, current pos is enough
+        // direction === 'none': current pos already checked above
     }
-
-    return occupied;
+    return false;
 }
 
 export function compute_direction(oldPos: Position, newPos: Position): string {
@@ -135,4 +109,14 @@ export function is_cell_occupied(position: Position, myId: string | null = null,
     }
 
     return false;
+}
+
+export function nextPosition(pos: Position, dir: string): Position {
+    switch (dir) {
+        case 'up': return { x: pos.x, y: pos.y + 1 };
+        case 'down': return { x: pos.x, y: pos.y - 1 };
+        case 'left': return { x: pos.x - 1, y: pos.y };
+        case 'right': return { x: pos.x + 1, y: pos.y };
+        default: return pos;
+    }
 }

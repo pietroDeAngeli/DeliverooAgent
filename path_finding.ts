@@ -1,4 +1,4 @@
-import type { Position, Crate } from './Belief.ts';
+import type { Position, Crate } from './BDI/Belief.ts';
 
 interface QueueNode {
     x: number;
@@ -8,145 +8,82 @@ interface QueueNode {
 interface ParentEntry {
     parentKey: string;
     dir: string;
+    depth: number;
 }
 
-//TODO: It could make sense to separate the extraBlocked logic (for dynamic obstacles) from the static crate blocking, to avoid recomputing the blocked set every time we want to find a path with different dynamic obstacles. We could have a getBlockedSet(worldMap) function that returns the set of blocked positions based on crates and stationary agents, and then pass that to bfs
+const ONE_WAY: Record<string, string> = {
+    '↑': 'up', '↓': 'down', '←': 'left', '→': 'right'
+};
 
-function bfs(
+const DIRECTIONS = [
+    { x: 0, y: -1, name: 'down' },
+    { x: 0, y: 1, name: 'up' },
+    { x: -1, y: 0, name: 'left' },
+    { x: 1, y: 0, name: 'right' }
+] as const;
+
+export class PathFinder {
+    private readonly parentMap: Map<string, ParentEntry>;
+    private readonly startKey: string;
+
+    constructor(parentMap: Map<string, ParentEntry>, startKey: string) {
+        this.parentMap = parentMap;
+        this.startKey = startKey;
+    }
+
+    getPath(target: Position): string[] | null {
+        const targetKey = `${target.x},${target.y}`;
+        if (!this.parentMap.has(targetKey)) return null;
+        const path: string[] = [];
+        let key = targetKey;
+        while (key !== this.startKey) {
+            const entry = this.parentMap.get(key)!;
+            path.unshift(entry.dir);
+            key = entry.parentKey;
+        }
+        return path;
+    }
+
+    getDistance(target: Position): number {
+        return this.parentMap.get(`${target.x},${target.y}`)?.depth ?? Infinity;
+    }
+}
+
+export function bfsFlood(
     start: Position,
-    target: Position,
     tiles: Map<string, string>,
-    width: number,
-    height: number,
     crates: Map<string, Crate>,
     extraBlocked: Set<string> = new Set()
-): string[] | null {
-    if (!start || !target || !tiles) return null;
-
+): PathFinder {
     const startKey = `${start.x},${start.y}`;
-    const targetKey = `${target.x},${target.y}`;
-
-    if (startKey === targetKey) return [];
+    const parentMap = new Map<string, ParentEntry>();
+    parentMap.set(startKey, { parentKey: '', dir: '', depth: 0 });
 
     const queue: QueueNode[] = [{ x: start.x, y: start.y }];
-    // parentMap stores how we reached each cell: avoids copying the path at every node (O(1) per node vs O(K))
-    const parentMap = new Map<string, ParentEntry>();
-    parentMap.set(startKey, { parentKey: '', dir: '' });
-
     const cratePositions = new Set([...crates.values()].map(c => `${c.pos.x},${c.pos.y}`));
     const blocked = new Set([...cratePositions, ...extraBlocked]);
-
-    const oneWayMap: Record<string, string> = {
-        '↑': 'up',
-        '↓': 'down',
-        '←': 'left',
-        '→': 'right'
-    };
-
-    const directions = [
-        { x: 0, y: -1, name: 'down' },
-        { x: 0, y: 1, name: 'up' },
-        { x: -1, y: 0, name: 'left' },
-        { x: 1, y: 0, name: 'right' }
-    ];
-
-    while (queue.length > 0) {
-        const current = queue.shift()!;
-        const { x, y } = current;
-        const currentKey = `${x},${y}`;
-
-        if (currentKey === targetKey) {
-            // Reconstruct path by walking parentMap backwards
-            const path: string[] = [];
-            let key = targetKey;
-            while (key !== startKey) {
-                const entry = parentMap.get(key)!;
-                path.unshift(entry.dir);
-                key = entry.parentKey;
-            }
-            return path;
-        }
-
-        const currentTileType = tiles.get(currentKey);
-
-        for (const dir of directions) {
-            if (currentTileType && oneWayMap[currentTileType] && oneWayMap[currentTileType] !== dir.name) {
-                continue;
-            }
-
-            const nextX = x + dir.x;
-            const nextY = y + dir.y;
-            const key = `${nextX},${nextY}`;
-            const nextTileType = tiles.get(key);
-
-            if (
-                nextTileType !== undefined &&
-                nextTileType !== '0' &&
-                !parentMap.has(key) &&
-                !blocked.has(key)
-            ) {
-                parentMap.set(key, { parentKey: currentKey, dir: dir.name });
-                queue.push({ x: nextX, y: nextY });
-            }
-        }
-    }
-    return null;
-}
-
-export { bfs };
-
-/**
- * Forward-reachability flood-fill from `start` on the directed tile graph.
- * Follows the same one-way-tile rules as bfs(): a tile with direction symbol '↑/↓/←/→'
- * can only be *exited* in that direction.
- * Crates are intentionally excluded so the result reflects static map structure only
- * (crates may change during the game).
- *
- * Returns the set of tile keys "x,y" reachable from `start`.
- */
-export function computeReachableTiles(
-    start: Position,
-    tiles: Map<string, string>
-): Set<string> {
-    const reachable = new Set<string>();
-    const startKey = `${start.x},${start.y}`;
-    const startType = tiles.get(startKey);
-    if (!startType || startType === '0') return reachable;
-
-    const oneWayMap: Record<string, string> = {
-        '↑': 'up', '↓': 'down', '←': 'left', '→': 'right'
-    };
-    const directions = [
-        { dx: 0,  dy: -1, name: 'down'  },
-        { dx: 0,  dy:  1, name: 'up'    },
-        { dx: -1, dy:  0, name: 'left'  },
-        { dx:  1, dy:  0, name: 'right' }
-    ];
-
-    reachable.add(startKey);
-    const queue: Position[] = [{ x: start.x, y: start.y }];
 
     while (queue.length > 0) {
         const { x, y } = queue.shift()!;
         const currentKey = `${x},${y}`;
-        const currentType = tiles.get(currentKey)!;
+        const currentDepth = parentMap.get(currentKey)!.depth;
+        const currentTileType = tiles.get(currentKey);
 
-        for (const { dx, dy, name } of directions) {
-            // One-way tile: can only leave in the designated direction
-            if (oneWayMap[currentType] && oneWayMap[currentType] !== name) continue;
-
-            const nx = x + dx;
-            const ny = y + dy;
+        for (const dir of DIRECTIONS) {
+            if (currentTileType && ONE_WAY[currentTileType] && ONE_WAY[currentTileType] !== dir.name) {
+                continue;
+            }
+            const nx = x + dir.x;
+            const ny = y + dir.y;
             const key = `${nx},${ny}`;
-            if (reachable.has(key)) continue;
-
-            const nType = tiles.get(key);
-            if (!nType || nType === '0') continue;
-
-            reachable.add(key);
-            queue.push({ x: nx, y: ny });
+            const nextTileType = tiles.get(key);
+            if (nextTileType !== undefined && nextTileType !== '0' && !parentMap.has(key) && !blocked.has(key)) {
+                parentMap.set(key, { parentKey: currentKey, dir: dir.name, depth: currentDepth + 1 });
+                queue.push({ x: nx, y: ny });
+            }
         }
     }
 
-    return reachable;
+    return new PathFinder(parentMap, startKey);
 }
+
