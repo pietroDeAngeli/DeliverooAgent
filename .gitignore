@@ -1,7 +1,14 @@
+# Files
 .env
-node_modules/
 package-lock.json
 todo
-dist
-pddl_planner.ts
-domain-deliveroo.pddl
+pddl/deliveroo-problem.pddl
+pddl/sas_plan
+*.log
+
+# Directories
+node_modules/*
+pddl/downward/*
+node_modules/*
+types/*
+results/*
