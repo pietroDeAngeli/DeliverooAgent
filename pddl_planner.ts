@@ -24,7 +24,6 @@ const PROBLEM_FILE = join(PDDL_DIR, 'deliveroo-problem.pddl');
 const PLAN_FILE    = join(PDDL_DIR, 'deliveroo-plan');
 
 // Relative paths used in the shell command (cwd = PDDL_DIR).
-// python3 on Windows is often WSL Python, which rejects absolute Windows paths.
 const DOWNWARD_REL  = join('downward', 'fast-downward.py');
 const DOMAIN_REL    = 'deliveroo-domain.pddl';
 const PROBLEM_REL   = 'deliveroo-problem.pddl';
@@ -119,7 +118,8 @@ export async function getPddlPath(
     // --plan-file is a driver option and MUST come before the domain/problem files.
     // Use relative paths only: python3 on Windows may be WSL Python, which
     // cannot parse absolute Windows paths (D:\...).
-    const cmd = `${PYTHON_CMD} "${DOWNWARD_REL}" --plan-file "${PLAN_REL}" --alias lama-first "${DOMAIN_REL}" "${PROBLEM_REL}"`;
+    //const cmd = `${PYTHON_CMD} "${DOWNWARD_REL}" --plan-file "${PLAN_REL}" --alias lama-first "${DOMAIN_REL}" "${PROBLEM_REL}"`;
+    const cmd = `${PYTHON_CMD} "${DOWNWARD_REL}" --plan-file "${PLAN_REL}" "${DOMAIN_REL}" "${PROBLEM_REL}" --search "astar(lmcut())"`;
 
     await new Promise<void>(resolve => {
         exec(cmd, { timeout: 15_000, cwd: PDDL_DIR }, (err, _stdout, stderr) => {
