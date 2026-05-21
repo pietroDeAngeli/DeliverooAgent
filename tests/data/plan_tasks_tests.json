@@ -1,0 +1,199 @@
+[
+  {
+    "id": 1,
+    "description": "No math expressions: clean message unchanged",
+    "input": "Go to tile (3, 4) to get some points",
+    "expected_calc_count": 0,
+    "expected_out": null,
+    "expected_clean_no_expressions": true
+  },
+  {
+    "id": 2,
+    "description": "Single multiplication in coordinates",
+    "input": "Move to x=4*2 to get +10pts",
+    "expected_calc_count": 1,
+    "expected_out": 8,
+    "expected_expressions_contain": ["4*2"]
+  },
+  {
+    "id": 3,
+    "description": "Two expressions in coordinates",
+    "input": "Move to x=4*2 y=(1+3)*3 to get +10pts",
+    "expected_calc_count": 2,
+    "expected_out": [8, 12],
+    "expected_expressions_contain": ["4*2", "(1+3)*3"]
+  },
+  {
+    "id": 4,
+    "description": "Simple arithmetic in message",
+    "input": "Calculate 5+3 and go to tile (2,2)",
+    "expected_calc_count": 1,
+    "expected_out": 8,
+    "expected_expressions_contain": ["5+3"]
+  },
+  {
+    "id": 5,
+    "description": "Reward with expression",
+    "input": "Go to tile (5,5) to earn 2*15 points",
+    "expected_calc_count": 1,
+    "expected_out": 30,
+    "expected_expressions_contain": ["2*15"]
+  },
+  {
+    "id": 6,
+    "description": "Three expressions in one message",
+    "input": "Move to x=2+1 y=3*3 and earn 10*2 pts",
+    "expected_calc_count": 3,
+    "expected_out": [3, 9, 20],
+    "expected_expressions_contain": ["2+1", "3*3", "10*2"]
+  },
+  {
+    "id": 7,
+    "description": "Expression with parentheses only",
+    "input": "Go to tile ((5+3)/2, 4)",
+    "expected_calc_count": 1,
+    "expected_out": 4,
+    "expected_expressions_contain": ["(5+3)/2"]
+  },
+  {
+    "id": 8,
+    "description": "Power expression in reward",
+    "input": "Go to tile (2, 3) and earn 2^8 points",
+    "expected_calc_count": 1,
+    "expected_out": 256,
+    "expected_expressions_contain": ["2^8"]
+  },
+  {
+    "id": 9,
+    "description": "Nested function expression",
+    "input": "Move to x=sqrt(16) y=4",
+    "expected_calc_count": 1,
+    "expected_out": 4,
+    "expected_expressions_contain": ["sqrt(16)"]
+  },
+  {
+    "id": 10,
+    "description": "No expression: plain tile coordinates",
+    "input": "Go to tile (10, 5)",
+    "expected_out": null,
+    "expected_calc_count": 0
+  },
+  {
+    "id": 11,
+    "description": "Expression with decimal",
+    "input": "Move to x=1.5+2.5 y=8",
+    "expected_calc_count": 1,
+    "expected_out": 4,
+    "expected_expressions_contain": ["1.5+2.5"]
+  },
+  {
+    "id": 12,
+    "description": "Multiple expressions and clean message has placeholders",
+    "input": "Go to x=3*2 y=4+1 for 5*2 pts",
+    "expected_calc_count": 3,
+    "expected_out": [6, 5, 10],
+    "expected_expressions_contain": ["3*2", "4+1", "5*2"]
+  },
+  {
+    "id": 13,
+    "description": "Question with arithmetic",
+    "input": "What is 100/4?",
+    "expected_calc_count": 1,
+    "expected_out": 25,
+    "expected_expressions_contain": ["100/4"]
+  },
+  {
+    "id": 14,
+    "description": "Clean message replaces expression with placeholder",
+    "input": "Go to x=6*2",
+    "expected_calc_count": 1,
+    "expected_out": 12,
+    "clean_message_no_original_expr": "6*2"
+  },
+  {
+    "id": 15,
+    "description": "Floor function as expression",
+    "input": "Go to tile (floor(7.5), 3)",
+    "expected_calc_count": 1,
+    "expected_out": 7,
+    "expected_expressions_contain": ["floor(7.5)"]
+  },
+  {
+    "id": 16,
+    "description": "Two separate arithmetic expressions",
+    "input": "x=10-3 and y=2+8",
+    "expected_calc_count": 2,
+    "expected_out": [7, 10],
+    "expected_expressions_contain": ["10-3", "2+8"]
+  },
+  {
+    "id": 17,
+    "description": "Expression with modulo",
+    "input": "Tile position x=10%3",
+    "expected_calc_count": 1,
+    "expected_out": 1,
+    "expected_expressions_contain": ["10%3"]
+  },
+  {
+    "id": 18,
+    "description": "Pi in expression",
+    "input": "Go to x=round(pi) y=5",
+    "expected_calc_count": 1,
+    "expected_out": 3,
+    "expected_expressions_contain": ["round(pi)"]
+  },
+  {
+    "id": 19,
+    "description": "No expression: words only",
+    "input": "What is the capital of France?",
+    "expected_out": null,
+    "expected_calc_count": 0
+  },
+  {
+    "id": 20,
+    "description": "No expression: position query",
+    "input": "Where am I?",
+    "expected_out": null,
+    "expected_calc_count": 0
+  },
+  {
+    "id": 21,
+    "description": "Expression embedded in Italian input",
+    "input": "Vai a x=3*4 y=2 per +10 punti",
+    "expected_calc_count": 1,
+    "expected_out": 12,
+    "expected_expressions_contain": ["3*4"]
+  },
+  {
+    "id": 22,
+    "description": "Complex expression with multiple operators",
+    "input": "Set reward to 3+4*2-1",
+    "expected_calc_count": 1,
+    "expected_out": 10,
+    "expected_expressions_contain": ["3+4*2-1"]
+  },
+  {
+    "id": 23,
+    "description": "Two function calls as expressions",
+    "input": "Move to x=abs(-3) y=ceil(2.1)",
+    "expected_calc_count": 2,
+    "expected_out": [3, 3],
+    "expected_expressions_contain": ["abs(-3)", "ceil(2.1)"]
+  },
+  {
+    "id": 24,
+    "description": "Exponent in x coordinate",
+    "input": "Go to tile (2^3, 2^2)",
+    "expected_calc_count": 2,
+    "expected_out": [8, 4],
+    "expected_expressions_contain": ["2^3", "2^2"]
+  },
+  {
+    "id": 25,
+    "description": "Placeholder format uses X1, X2 etc in clean message",
+    "input": "Move to x=5*2 y=3+1",
+    "expected_calc_count": 2,
+    "expected_out": [10, 4],
+    "clean_message_contains_placeholder": true
+  }
+]

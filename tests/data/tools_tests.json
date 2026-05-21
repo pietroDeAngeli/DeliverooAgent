@@ -1,0 +1,379 @@
+{
+  "calculate": [
+    {
+      "id": 1,
+      "description": "Simple addition",
+      "input": "2+2",
+      "expected": "4",
+      "match": "exact"
+    },
+    {
+      "id": 2,
+      "description": "Simple subtraction",
+      "input": "10-3",
+      "expected": "7",
+      "match": "exact"
+    },
+    {
+      "id": 3,
+      "description": "Simple multiplication",
+      "input": "3*4",
+      "expected": "12",
+      "match": "exact"
+    },
+    {
+      "id": 4,
+      "description": "Simple division",
+      "input": "10/4",
+      "expected": "2.5",
+      "match": "exact"
+    },
+    {
+      "id": 5,
+      "description": "Power operation",
+      "input": "2^10",
+      "expected": "1024",
+      "match": "exact"
+    },
+    {
+      "id": 6,
+      "description": "Square root",
+      "input": "sqrt(16)",
+      "expected": "4",
+      "match": "exact"
+    },
+    {
+      "id": 7,
+      "description": "Parenthesized expression",
+      "input": "(2+3)*4",
+      "expected": "20",
+      "match": "exact"
+    },
+    {
+      "id": 8,
+      "description": "Float arithmetic",
+      "input": "1.5 + 2.5",
+      "expected": "4",
+      "match": "exact"
+    },
+    {
+      "id": 9,
+      "description": "Modulo",
+      "input": "10 % 3",
+      "expected": "1",
+      "match": "exact"
+    },
+    {
+      "id": 10,
+      "description": "Absolute value",
+      "input": "abs(-7)",
+      "expected": "7",
+      "match": "exact"
+    },
+    {
+      "id": 11,
+      "description": "Floor function",
+      "input": "floor(3.7)",
+      "expected": "3",
+      "match": "exact"
+    },
+    {
+      "id": 12,
+      "description": "Ceil function",
+      "input": "ceil(3.2)",
+      "expected": "4",
+      "match": "exact"
+    },
+    {
+      "id": 13,
+      "description": "Round function (half up)",
+      "input": "round(3.5)",
+      "expected": "4",
+      "match": "exact"
+    },
+    {
+      "id": 14,
+      "description": "Min of two values",
+      "input": "min(3, 7)",
+      "expected": "3",
+      "match": "exact"
+    },
+    {
+      "id": 15,
+      "description": "Max of two values",
+      "input": "max(3, 7)",
+      "expected": "7",
+      "match": "exact"
+    },
+    {
+      "id": 16,
+      "description": "Pi constant rounded",
+      "input": "round(pi)",
+      "expected": "3",
+      "match": "exact"
+    },
+    {
+      "id": 17,
+      "description": "Cube root",
+      "input": "cbrt(27)",
+      "expected": "3",
+      "match": "exact"
+    },
+    {
+      "id": 18,
+      "description": "Nested arithmetic",
+      "input": "sqrt(4) + 3^2",
+      "expected": "11",
+      "match": "exact"
+    },
+    {
+      "id": 19,
+      "description": "Log base 10",
+      "input": "log(100, 10)",
+      "expected": "2",
+      "match": "exact"
+    },
+    {
+      "id": 20,
+      "description": "Sin of 0",
+      "input": "sin(0)",
+      "expected": "0",
+      "match": "exact"
+    },
+    {
+      "id": 21,
+      "description": "Empty input returns error",
+      "input": "",
+      "expected": "Error: expression is required.",
+      "match": "exact"
+    },
+    {
+      "id": 22,
+      "description": "Expression too long returns error",
+      "input": "1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1",
+      "expected": "Error: expression is too long.",
+      "match": "exact"
+    },
+    {
+      "id": 23,
+      "description": "Unsupported character returns error",
+      "input": "2 $ 3",
+      "expected": "Error: expression contains unsupported characters.",
+      "match": "exact"
+    },
+    {
+      "id": 24,
+      "description": "Blocked syntax (semicolon) returns error",
+      "input": "2+2; 3+3",
+      "expected_starts_with": "Error:",
+      "match": "starts_with"
+    },
+    {
+      "id": 25,
+      "description": "Unsupported identifier returns error",
+      "input": "foo(3)",
+      "expected_starts_with": "Error: unsupported identifier",
+      "match": "starts_with"
+    },
+    {
+      "id": 26,
+      "description": "Division by zero returns not-finite error",
+      "input": "1/0",
+      "expected": "Error: result is not finite.",
+      "match": "exact"
+    },
+    {
+      "id": 27,
+      "description": "Large multiplication",
+      "input": "1000 * 1000",
+      "expected": "1000000",
+      "match": "exact"
+    },
+    {
+      "id": 28,
+      "description": "Negative result",
+      "input": "3 - 10",
+      "expected": "-7",
+      "match": "exact"
+    }
+  ],
+  "getCurrentTime": [
+    {
+      "id": 1,
+      "description": "Known city: London",
+      "input": "London",
+      "match": "not_error",
+      "expected_contains": "Europe/London"
+    },
+    {
+      "id": 2,
+      "description": "Known city: Rome",
+      "input": "Rome",
+      "match": "not_error",
+      "expected_contains": "Europe/Rome"
+    },
+    {
+      "id": 3,
+      "description": "Known city: Tokyo",
+      "input": "Tokyo",
+      "match": "not_error",
+      "expected_contains": "Asia/Tokyo"
+    },
+    {
+      "id": 4,
+      "description": "Known city: New York",
+      "input": "New York",
+      "match": "not_error",
+      "expected_contains": "America/New_York"
+    },
+    {
+      "id": 5,
+      "description": "Known city: Sydney",
+      "input": "Sydney",
+      "match": "not_error",
+      "expected_contains": "Australia/Sydney"
+    },
+    {
+      "id": 6,
+      "description": "Known city: Dubai",
+      "input": "Dubai",
+      "match": "not_error",
+      "expected_contains": "Asia/Dubai"
+    },
+    {
+      "id": 7,
+      "description": "Known city: Berlin",
+      "input": "Berlin",
+      "match": "not_error",
+      "expected_contains": "Europe/Berlin"
+    },
+    {
+      "id": 8,
+      "description": "Known city: Los Angeles",
+      "input": "Los Angeles",
+      "match": "not_error",
+      "expected_contains": "America/Los_Angeles"
+    },
+    {
+      "id": 9,
+      "description": "Known city: Paris",
+      "input": "Paris",
+      "match": "not_error",
+      "expected_contains": "Europe/Paris"
+    },
+    {
+      "id": 10,
+      "description": "Known city: Singapore",
+      "input": "Singapore",
+      "match": "not_error",
+      "expected_contains": "Asia/Singapore"
+    },
+    {
+      "id": 11,
+      "description": "Empty string returns error",
+      "input": "",
+      "expected": "Error: location is required.",
+      "match": "exact"
+    },
+    {
+      "id": 12,
+      "description": "Whitespace-only returns error",
+      "input": "   ",
+      "expected": "Error: location is required.",
+      "match": "exact"
+    },
+    {
+      "id": 13,
+      "description": "Unknown city returns not-found error",
+      "input": "Zxqpqrstuvwxyz",
+      "match": "starts_with",
+      "expected_starts_with": "Error: location"
+    },
+    {
+      "id": 14,
+      "description": "Result contains 'The current local time'",
+      "input": "Moscow",
+      "match": "contains",
+      "expected_contains": "The current local time in"
+    },
+    {
+      "id": 15,
+      "description": "Result contains timezone format YYYY-MM-DD",
+      "input": "Toronto",
+      "match": "regex",
+      "expected_regex": "\\d{4}-\\d{2}-\\d{2}"
+    }
+  ],
+  "getMyPosition": [
+    {
+      "id": 1,
+      "description": "Valid integer position",
+      "input": { "x": 3, "y": 4 },
+      "expected": "My position is (3, 4)",
+      "match": "exact"
+    },
+    {
+      "id": 2,
+      "description": "Position at origin",
+      "input": { "x": 0, "y": 0 },
+      "expected": "My position is (0, 0)",
+      "match": "exact"
+    },
+    {
+      "id": 3,
+      "description": "Large coordinates",
+      "input": { "x": 100, "y": 200 },
+      "expected": "My position is (100, 200)",
+      "match": "exact"
+    },
+    {
+      "id": 4,
+      "description": "Null x returns error",
+      "input": { "x": null, "y": 5 },
+      "expected": "Error: agent position is not available.",
+      "match": "exact"
+    },
+    {
+      "id": 5,
+      "description": "Null y returns error",
+      "input": { "x": 3, "y": null },
+      "expected": "Error: agent position is not available.",
+      "match": "exact"
+    },
+    {
+      "id": 6,
+      "description": "Both null returns error",
+      "input": { "x": null, "y": null },
+      "expected": "Error: agent position is not available.",
+      "match": "exact"
+    },
+    {
+      "id": 7,
+      "description": "Single digit coordinates",
+      "input": { "x": 1, "y": 9 },
+      "expected": "My position is (1, 9)",
+      "match": "exact"
+    },
+    {
+      "id": 8,
+      "description": "Boundary coordinate x=0",
+      "input": { "x": 0, "y": 10 },
+      "expected": "My position is (0, 10)",
+      "match": "exact"
+    },
+    {
+      "id": 9,
+      "description": "Asymmetric large values",
+      "input": { "x": 99, "y": 1 },
+      "expected": "My position is (99, 1)",
+      "match": "exact"
+    },
+    {
+      "id": 10,
+      "description": "Coordinates mid-grid",
+      "input": { "x": 5, "y": 5 },
+      "expected": "My position is (5, 5)",
+      "match": "exact"
+    }
+  ]
+}

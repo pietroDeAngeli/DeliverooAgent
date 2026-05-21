@@ -1,0 +1,177 @@
+[
+  {
+    "id": 1,
+    "description": "Single desire action stays as one item",
+    "input": "Go to tile (3, 4) to get +10 points",
+    "expected_count": 1,
+    "keywords_in_any": ["tile", "3"]
+  },
+  {
+    "id": 2,
+    "description": "Single calculate action stays as one item",
+    "input": "What is 2 + 2?",
+    "expected_count": 1,
+    "keywords_in_any": ["2"]
+  },
+  {
+    "id": 3,
+    "description": "Single time query stays as one item",
+    "input": "What is the current time in Tokyo?",
+    "expected_count": 1,
+    "keywords_in_any": ["Tokyo"]
+  },
+  {
+    "id": 4,
+    "description": "Two actions split: desire + time",
+    "input": "Go to tile (3,4) to get +10pts and tell me the current time in London",
+    "expected_count": 2,
+    "keywords_in_any": ["tile", "London"]
+  },
+  {
+    "id": 5,
+    "description": "Two actions split: calculate + time",
+    "input": "Calculate 5*3 and tell me the time in Paris",
+    "expected_count": 2,
+    "keywords_in_any": ["5", "Paris"]
+  },
+  {
+    "id": 6,
+    "description": "Two actions split: position + time",
+    "input": "Where am I and what time is it in Rome?",
+    "expected_count": 2,
+    "keywords_in_any": ["Rome"]
+  },
+  {
+    "id": 7,
+    "description": "Two actions split: desire + calculate",
+    "input": "Move to tile (5, 8) for +15 points and calculate 4*7",
+    "expected_count": 2,
+    "keywords_in_any": ["5", "4"]
+  },
+  {
+    "id": 8,
+    "description": "Three actions split: desire + time + calculate",
+    "input": "Go to (2,3) for +5pts, tell me the time in Berlin, and compute sqrt(16)",
+    "expected_count": 3,
+    "keywords_in_any": ["2", "Berlin", "sqrt"]
+  },
+  {
+    "id": 9,
+    "description": "Math expression in coordinates is NOT split",
+    "input": "Move to x=4*2 y=(1+3)*3 to get +10pts",
+    "expected_count": 1,
+    "keywords_in_any": ["4*2"]
+  },
+  {
+    "id": 10,
+    "description": "Delivery constraint stays as one item",
+    "input": "Drop packages in leftmost tile to get +5 points",
+    "expected_count": 1,
+    "keywords_in_any": ["leftmost"]
+  },
+  {
+    "id": 11,
+    "description": "Two delivery constraints are split",
+    "input": "Drop in leftmost tile for +5pts and avoid rightmost tile",
+    "expected_count": 2,
+    "keywords_in_any": ["leftmost", "rightmost"]
+  },
+  {
+    "id": 12,
+    "description": "Desire + delivery constraint split",
+    "input": "Go to tile (7,3) for +20 points and drop in topmost tile for +10 points",
+    "expected_count": 2,
+    "keywords_in_any": ["7", "topmost"]
+  },
+  {
+    "id": 13,
+    "description": "Common knowledge stays as one item",
+    "input": "What is the capital of France?",
+    "expected_count": 1,
+    "keywords_in_any": ["France"]
+  },
+  {
+    "id": 14,
+    "description": "Common knowledge + time split",
+    "input": "What is the capital of Japan? Also tell me the time in Tokyo.",
+    "expected_count": 2,
+    "keywords_in_any": ["Japan", "Tokyo"]
+  },
+  {
+    "id": 15,
+    "description": "Position query stays as one item",
+    "input": "What is my current position?",
+    "expected_count": 1,
+    "keywords_in_any": ["position"]
+  },
+  {
+    "id": 16,
+    "description": "Avoid tile desire stays as one",
+    "input": "Avoid tile (1, 1) it's dangerous",
+    "expected_count": 1,
+    "keywords_in_any": ["1"]
+  },
+  {
+    "id": 17,
+    "description": "Three separate time queries are split",
+    "input": "Tell me the time in London, Paris, and Tokyo",
+    "min_count": 2,
+    "keywords_in_any": ["London", "Paris", "Tokyo"]
+  },
+  {
+    "id": 18,
+    "description": "Desire + avoid tile are split",
+    "input": "Go to tile (5,5) for +10pts and avoid tile (1,1)",
+    "expected_count": 2,
+    "keywords_in_any": ["5,5", "1,1"]
+  },
+  {
+    "id": 19,
+    "description": "Modifier phrase stays attached to its action",
+    "input": "Go to tile (3,4) for 10 points",
+    "expected_count": 1,
+    "keywords_in_any": ["10"]
+  },
+  {
+    "id": 20,
+    "description": "Calculate with expression containing function",
+    "input": "What is sqrt(144)?",
+    "expected_count": 1,
+    "keywords_in_any": ["sqrt"]
+  },
+  {
+    "id": 21,
+    "description": "Four actions are fully split",
+    "input": "Go to (3,4) for +5pts, calculate 10*2, tell me the time in NY, and where am I?",
+    "min_count": 3,
+    "keywords_in_any": ["3,4", "10*2", "NY"]
+  },
+  {
+    "id": 22,
+    "description": "Italian language input stays intact",
+    "input": "Vai alla casella (2,3) per +5 punti",
+    "expected_count": 1,
+    "keywords_in_any": ["2,3"]
+  },
+  {
+    "id": 23,
+    "description": "Delivery constraint + calculate split",
+    "input": "Avoid the bottommost tile and what is 3^4?",
+    "expected_count": 2,
+    "keywords_in_any": ["bottommost", "3^4"]
+  },
+  {
+    "id": 24,
+    "description": "Single common knowledge with no action",
+    "input": "What is the speed of light?",
+    "expected_count": 1,
+    "keywords_in_any": ["light"]
+  },
+  {
+    "id": 25,
+    "description": "Desire with negative points (avoid) stays as one",
+    "input": "Avoid tile (9,9) penalty -20pts",
+    "expected_count": 1,
+    "keywords_in_any": ["9,9"]
+  }
+]

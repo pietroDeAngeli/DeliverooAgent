@@ -1,0 +1,152 @@
+[
+  {
+    "id": 1,
+    "description": "Simple city: London",
+    "input": "What is the current time in London?",
+    "expected_city": "london"
+  },
+  {
+    "id": 2,
+    "description": "Simple city: Paris",
+    "input": "Tell me the time in Paris",
+    "expected_city": "paris"
+  },
+  {
+    "id": 3,
+    "description": "Simple city: Tokyo",
+    "input": "What time is it in Tokyo?",
+    "expected_city": "tokyo"
+  },
+  {
+    "id": 4,
+    "description": "Simple city: New York",
+    "input": "What is the time in New York?",
+    "expected_city": "new york"
+  },
+  {
+    "id": 5,
+    "description": "Simple city: Rome",
+    "input": "Tell me the current time in Rome",
+    "expected_city": "rome"
+  },
+  {
+    "id": 6,
+    "description": "Simple city: Berlin",
+    "input": "What time is it in Berlin right now?",
+    "expected_city": "berlin"
+  },
+  {
+    "id": 7,
+    "description": "Simple city: Sydney",
+    "input": "What is the current time in Sydney?",
+    "expected_city": "sydney"
+  },
+  {
+    "id": 8,
+    "description": "Simple city: Los Angeles",
+    "input": "What time is it in Los Angeles?",
+    "expected_city": "los angeles"
+  },
+  {
+    "id": 9,
+    "description": "City embedded in longer sentence",
+    "input": "I need to know the time in Moscow to schedule a call",
+    "expected_city": "moscow"
+  },
+  {
+    "id": 10,
+    "description": "City with country context",
+    "input": "What time is it in Beijing, China?",
+    "expected_city": "beijing"
+  },
+  {
+    "id": 11,
+    "description": "City with 'right now' emphasis",
+    "input": "Give me the time in Dubai right now",
+    "expected_city": "dubai"
+  },
+  {
+    "id": 12,
+    "description": "City with 'currently'",
+    "input": "What is currently the time in Toronto?",
+    "expected_city": "toronto"
+  },
+  {
+    "id": 13,
+    "description": "City in Italian sentence",
+    "input": "Che ore sono a Milano?",
+    "expected_city": "milano"
+  },
+  {
+    "id": 14,
+    "description": "City in Italian sentence: Roma",
+    "input": "Che ora è a Roma adesso?",
+    "expected_city": "roma"
+  },
+  {
+    "id": 15,
+    "description": "Capital city: Washington DC",
+    "input": "Tell me the time in Washington DC",
+    "expected_city": "washington"
+  },
+  {
+    "id": 16,
+    "description": "City after 'local time' phrase",
+    "input": "What is the local time in Singapore?",
+    "expected_city": "singapore"
+  },
+  {
+    "id": 17,
+    "description": "City with timezone mention",
+    "input": "What is the time in Amsterdam (CET timezone)?",
+    "expected_city": "amsterdam"
+  },
+  {
+    "id": 18,
+    "description": "City: Mumbai",
+    "input": "Get me the current time in Mumbai",
+    "expected_city": "mumbai"
+  },
+  {
+    "id": 19,
+    "description": "City: Cairo",
+    "input": "What is the time in Cairo?",
+    "expected_city": "cairo"
+  },
+  {
+    "id": 20,
+    "description": "City with abbreviated form: NYC",
+    "input": "What time is it in NYC?",
+    "expected_city": "nyc"
+  },
+  {
+    "id": 21,
+    "description": "City: Seoul",
+    "input": "Current time in Seoul please",
+    "expected_city": "seoul"
+  },
+  {
+    "id": 22,
+    "description": "City: Chicago",
+    "input": "What time is it in Chicago right now?",
+    "expected_city": "chicago"
+  },
+  {
+    "id": 23,
+    "description": "City with 'for me' phrase",
+    "input": "Tell me the time for me in Madrid",
+    "expected_city": "madrid"
+  },
+  {
+    "id": 24,
+    "description": "City: Bangkok",
+    "input": "I want to know the time in Bangkok",
+    "expected_city": "bangkok"
+  },
+  {
+    "id": 25,
+    "description": "City: Nairobi",
+    "input": "What is the current time in Nairobi?",
+    "expected_city": "nairobi"
+  }
+]

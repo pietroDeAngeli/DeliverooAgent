@@ -1,0 +1,152 @@
+[
+  {
+    "id": 1,
+    "description": "Exact action: calculate",
+    "input": "calculate",
+    "expected": "calculate"
+  },
+  {
+    "id": 2,
+    "description": "Exact action: get_current_time",
+    "input": "get_current_time",
+    "expected": "get_current_time"
+  },
+  {
+    "id": 3,
+    "description": "Exact action: get_my_position",
+    "input": "get_my_position",
+    "expected": "get_my_position"
+  },
+  {
+    "id": 4,
+    "description": "Exact action: generate_desire",
+    "input": "generate_desire",
+    "expected": "generate_desire"
+  },
+  {
+    "id": 5,
+    "description": "Exact action: common_knowledge",
+    "input": "common_knowledge",
+    "expected": "common_knowledge"
+  },
+  {
+    "id": 6,
+    "description": "Exact action: generate_delivery_constraint",
+    "input": "generate_delivery_constraint",
+    "expected": "generate_delivery_constraint"
+  },
+  {
+    "id": 7,
+    "description": "Uppercase CALCULATE is lowercased and matches",
+    "input": "CALCULATE",
+    "expected": "calculate"
+  },
+  {
+    "id": 8,
+    "description": "Mixed case GET_CURRENT_TIME matches after lowercase",
+    "input": "GET_CURRENT_TIME",
+    "expected": "get_current_time"
+  },
+  {
+    "id": 9,
+    "description": "Mixed case Generate_Desire matches after lowercase",
+    "input": "Generate_Desire",
+    "expected": "generate_desire"
+  },
+  {
+    "id": 10,
+    "description": "Mixed case Common_Knowledge matches",
+    "input": "Common_Knowledge",
+    "expected": "common_knowledge"
+  },
+  {
+    "id": 11,
+    "description": "Leading/trailing whitespace is trimmed, then matches",
+    "input": "  calculate  ",
+    "expected": "calculate"
+  },
+  {
+    "id": 12,
+    "description": "Whitespace around get_my_position",
+    "input": " get_my_position ",
+    "expected": "get_my_position"
+  },
+  {
+    "id": 13,
+    "description": "Invalid: partial match 'calc' is not an action",
+    "input": "calc",
+    "expected": "Error, no valid action found."
+  },
+  {
+    "id": 14,
+    "description": "Invalid: extra word appended",
+    "input": "calculate now",
+    "expected": "Error, no valid action found."
+  },
+  {
+    "id": 15,
+    "description": "Invalid: empty string",
+    "input": "",
+    "expected": "Error, no valid action found."
+  },
+  {
+    "id": 16,
+    "description": "Invalid: only whitespace",
+    "input": "   ",
+    "expected": "Error, no valid action found."
+  },
+  {
+    "id": 17,
+    "description": "Invalid: random word",
+    "input": "fly",
+    "expected": "Error, no valid action found."
+  },
+  {
+    "id": 18,
+    "description": "Invalid: number string",
+    "input": "123",
+    "expected": "Error, no valid action found."
+  },
+  {
+    "id": 19,
+    "description": "Invalid: partial delivery without suffix",
+    "input": "generate_delivery",
+    "expected": "Error, no valid action found."
+  },
+  {
+    "id": 20,
+    "description": "Invalid: action with special characters",
+    "input": "calculate()",
+    "expected": "Error, no valid action found."
+  },
+  {
+    "id": 21,
+    "description": "Invalid: 'desire' without prefix",
+    "input": "desire",
+    "expected": "Error, no valid action found."
+  },
+  {
+    "id": 22,
+    "description": "Invalid: 'position' alone",
+    "input": "position",
+    "expected": "Error, no valid action found."
+  },
+  {
+    "id": 23,
+    "description": "Invalid: action with dash instead of underscore",
+    "input": "get-current-time",
+    "expected": "Error, no valid action found."
+  },
+  {
+    "id": 24,
+    "description": "Invalid: sentence containing a valid action word",
+    "input": "please calculate for me",
+    "expected": "Error, no valid action found."
+  },
+  {
+    "id": 25,
+    "description": "All caps GENERATE_DELIVERY_CONSTRAINT",
+    "input": "GENERATE_DELIVERY_CONSTRAINT",
+    "expected": "generate_delivery_constraint"
+  }
+]

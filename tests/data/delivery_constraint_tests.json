@@ -1,0 +1,177 @@
+[
+  {
+    "id": 1,
+    "description": "Drop in leftmost for +5 points",
+    "input": "Drop packages in leftmost tile to get +5 points",
+    "expected_direction": "leftmost",
+    "expected_points": 5
+  },
+  {
+    "id": 2,
+    "description": "Drop in rightmost for +10 points",
+    "input": "Deliver to rightmost tile for +10 points",
+    "expected_direction": "rightmost",
+    "expected_points": 10
+  },
+  {
+    "id": 3,
+    "description": "Drop in topmost for +8 points",
+    "input": "Drop in topmost tile to earn 8 points",
+    "expected_direction": "topmost",
+    "expected_points": 8
+  },
+  {
+    "id": 4,
+    "description": "Drop in bottommost for +3 points",
+    "input": "Deliver to the bottommost tile for 3 pts",
+    "expected_direction": "bottommost",
+    "expected_points": 3
+  },
+  {
+    "id": 5,
+    "description": "Avoid leftmost tile (negative points)",
+    "input": "Avoid dropping in the leftmost tile",
+    "expected_direction": "leftmost",
+    "expected_points_negative": true
+  },
+  {
+    "id": 6,
+    "description": "Do not drop in rightmost tile",
+    "input": "Do not drop in the rightmost tile",
+    "expected_direction": "rightmost",
+    "expected_points_negative": true
+  },
+  {
+    "id": 7,
+    "description": "Penalty for bottommost tile",
+    "input": "You lose 5 points if you drop in the bottommost tile",
+    "expected_direction": "bottommost",
+    "expected_points": -5
+  },
+  {
+    "id": 8,
+    "description": "Leftmost gives +20 points",
+    "input": "The leftmost tile gives you +20 points",
+    "expected_direction": "leftmost",
+    "expected_points": 20
+  },
+  {
+    "id": 9,
+    "description": "Rightmost is a bonus tile +15",
+    "input": "Delivering to the rightmost tile earns +15 points",
+    "expected_direction": "rightmost",
+    "expected_points": 15
+  },
+  {
+    "id": 10,
+    "description": "Topmost tile to avoid, -10 points",
+    "input": "Avoid the topmost tile, it costs you -10 pts",
+    "expected_direction": "topmost",
+    "expected_points": -10
+  },
+  {
+    "id": 11,
+    "description": "Do not deliver to topmost",
+    "input": "Never deliver to the topmost tile",
+    "expected_direction": "topmost",
+    "expected_points_negative": true
+  },
+  {
+    "id": 12,
+    "description": "Rightmost yields +25",
+    "input": "Drop here at the rightmost for 25 pts bonus",
+    "expected_direction": "rightmost",
+    "expected_points": 25
+  },
+  {
+    "id": 13,
+    "description": "Leftmost not recommended",
+    "input": "I recommend not dropping in the leftmost tile",
+    "expected_direction": "leftmost",
+    "expected_points_negative": true
+  },
+  {
+    "id": 14,
+    "description": "Bottommost gives +7",
+    "input": "The bottommost drop zone gives 7 points",
+    "expected_direction": "bottommost",
+    "expected_points": 7
+  },
+  {
+    "id": 15,
+    "description": "Rightmost forbidden tile",
+    "input": "The rightmost tile is forbidden for dropping",
+    "expected_direction": "rightmost",
+    "expected_points_negative": true
+  },
+  {
+    "id": 16,
+    "description": "Leftmost with large reward +50",
+    "input": "Get +50 pts by dropping at leftmost",
+    "expected_direction": "leftmost",
+    "expected_points": 50
+  },
+  {
+    "id": 17,
+    "description": "Italian: sinistra (leftmost) +5",
+    "input": "Consegna sulla casella più a sinistra per +5 punti",
+    "expected_direction": "leftmost",
+    "expected_points": 5
+  },
+  {
+    "id": 18,
+    "description": "Topmost delivery earns 12",
+    "input": "Topmost tile delivery earns you 12 points",
+    "expected_direction": "topmost",
+    "expected_points": 12
+  },
+  {
+    "id": 19,
+    "description": "Negative: lose 3 for bottommost",
+    "input": "Dropping at bottommost loses you 3 points",
+    "expected_direction": "bottommost",
+    "expected_points": -3
+  },
+  {
+    "id": 20,
+    "description": "Rightmost penalty -8",
+    "input": "Rightmost tile gives -8 pts penalty",
+    "expected_direction": "rightmost",
+    "expected_points": -8
+  },
+  {
+    "id": 21,
+    "description": "Leftmost is best spot +100",
+    "input": "The leftmost tile is worth 100 points",
+    "expected_direction": "leftmost",
+    "expected_points": 100
+  },
+  {
+    "id": 22,
+    "description": "Avoid bottommost tile",
+    "input": "Avoid the bottommost tile at all costs",
+    "expected_direction": "bottommost",
+    "expected_points_negative": true
+  },
+  {
+    "id": 23,
+    "description": "Topmost with +30 reward",
+    "input": "Head to topmost delivery zone for a +30 point reward",
+    "expected_direction": "topmost",
+    "expected_points": 30
+  },
+  {
+    "id": 24,
+    "description": "Rightmost deducts 20 points",
+    "input": "Delivering to rightmost deducts 20 points",
+    "expected_direction": "rightmost",
+    "expected_points": -20
+  },
+  {
+    "id": 25,
+    "description": "Bottommost bonus +6 points",
+    "input": "You gain 6 points from bottommost delivery",
+    "expected_direction": "bottommost",
+    "expected_points": 6
+  }
+]
