@@ -4,8 +4,9 @@ import { create, all } from "mathjs";
 
 const math = create(all, {});
 
-// Disable high-risk functions in the expression parser.
-// These functions are not needed for a simple calculator and can increase the attack surface.
+// Disable high-risk mathjs functions that are not needed for a simple calculator.
+// Note: evaluate/parse are intentionally kept enabled — security is enforced via
+// the character whitelist, identifier whitelist, and blocked-syntax checks below.
 math.import(
     {
         import: () => {
@@ -13,12 +14,6 @@ math.import(
         },
         createUnit: () => {
             throw new Error("Function createUnit is disabled");
-        },
-        evaluate: () => {
-            throw new Error("Function evaluate is disabled");
-        },
-        parse: () => {
-            throw new Error("Function parse is disabled");
         },
         simplify: () => {
             throw new Error("Function simplify is disabled");
@@ -125,7 +120,11 @@ export async function getCurrentTime(location: string): Promise<string> {
             return `Error: location "${location}" was not found.`;
         }
 
-        const bestMatch = matches[0];
+        // Prefer the city with the largest population to handle ambiguous names
+        // (e.g. "London" should resolve to London, UK, not London, Ontario).
+        const bestMatch = matches.reduce((best, cur) =>
+            (cur.pop ?? 0) > (best.pop ?? 0) ? cur : best
+        );
 
         const timeZone = bestMatch.timezone;
         const city = bestMatch.city;

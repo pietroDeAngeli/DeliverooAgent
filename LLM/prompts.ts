@@ -1,11 +1,17 @@
 const TOOL_RULES = `
 Tool Usage Rules:
-1. **calculate**: evaluate mathematical expressions
-2. **get_current_time**: return current time in a city
-3. **get_my_position**: return the current position of the agent
-4. **generate_desire**: generate a desire about the DeliverooJS world such as going to a location, seeing something, avoiding a certain location or any interaction with the other agent etc.
-5. **common knowledge**: answer a general question, such as "what is the capital of Italy?" or "who is the president of the United States?"
-6. **generate_delivery_constraint**: generate a delivery preference for a directional tile (e.g. "drop in leftmost tile to get +5pts", "avoid dropping in rightmost tile")
+1. **calculate**: evaluate ANY numerical computation or math expression, regardless of phrasing ("what is", "calculate", "compute", "calcola", "how much is", etc.).
+2. **get_current_time**: return the current local time in a specific city.
+3. **get_my_position**: return the agent's current coordinates in the world.
+4. **generate_desire**: set a movement goal — navigate TO or AVOID a specific tile identified by coordinates like (x, y). Use this whenever the instruction is about where the agent should or should not MOVE.
+5. **common_knowledge**: answer a general factual question unrelated to the game (history, science, geography, trivia, etc.).
+6. **generate_delivery_constraint**: set a delivery preference about WHERE to DROP packages, expressed as a DIRECTION (leftmost / rightmost / topmost / bottommost). Only use this for drop-off zone instructions, never for movement goals.
+
+Key distinctions:
+- Any request with a specific coordinate (x, y) and movement/avoidance → **generate_desire**
+- Any request about delivery direction (leftmost/rightmost/topmost/bottommost) → **generate_delivery_constraint**
+- Any general factual question (capitals, history, science) → **common_knowledge**
+- Any numerical expression to compute → **calculate**
 `; 
 
 export const ACTIONS: string[] = ["calculate", "get_current_time", "get_my_position", "generate_desire", "common_knowledge", "generate_delivery_constraint"];
@@ -50,7 +56,7 @@ Answer: ["Move to x=4*2 y=(1+3)*3 to get +10pts"]
 export const ORCHESTRATOR_PROMPT = `
 You are the orchestrator module inside an AI agent connected to a DeliverooJS environment.
 
-Your job is to understand the user's request and generate the next action to take.
+Your job is to classify the user's request and return the single action that best handles it.
 
 Available tools:
 ${TOOL_RULES}
@@ -59,10 +65,22 @@ Available actions:
 ${ACTIONS.map(a => `- ${a}`).join("\n")}
 
 Rules:
-- Return ONLY valid ACTION.
+- Return ONLY the action name, nothing else.
+- Do not evaluate, answer, or explain.
 - Do not use markdown.
-- Do not explain.
+- The output must be exactly one of the action names listed above.
 
+Examples:
+User: "What is 5 + 3?"             → calculate
+User: "Compute 12 * 7"             → calculate
+User: "Who invented the radio?"    → common_knowledge
+User: "What is the capital of Germany?" → common_knowledge
+User: "Go to tile (3, 4)"          → generate_desire
+User: "Avoid tile (2, 2)"          → generate_desire
+User: "Drop in leftmost tile for +5 pts" → generate_delivery_constraint
+User: "Do not deliver to rightmost tile" → generate_delivery_constraint
+User: "What time is it in Rome?"   → get_current_time
+User: "Where am I?"                → get_my_position
 `.trim();
 
 export const GET_CITY_PROMPT = `You are a helpful assistant that extracts city names from user input.
