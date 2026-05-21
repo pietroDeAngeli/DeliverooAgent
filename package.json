@@ -7,7 +7,11 @@
   "scripts": {
     "setup": "npm install",
     "start": "node --experimental-strip-types main.ts",
+    "start:llm": "node --experimental-strip-types main.ts --use-llm",
     "dev": "node --watch --experimental-strip-types main.ts",
+    "test": "node --experimental-strip-types tests/llm_tests.ts",
+    "test:skip-live": "node --experimental-strip-types tests/llm_tests.ts --skip-live",
+    "test:verbose": "node --experimental-strip-types tests/llm_tests.ts --verbose",
     "typecheck": "tsc --noEmit"
   },
   "repository": {

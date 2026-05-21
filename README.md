@@ -13,39 +13,66 @@ npm run build
 npm start
 ```
 
-You can see the the world using [http://localhost:8080/](http://localhost:8080/)
+You can see the world using [http://localhost:8080/](http://localhost:8080/)
 
-And creating yourself the credentials. 
+Create your own credentials there.
 
 ### Setup
 ```bash
 git clone https://github.com/pietroDeAngeli/Deliveroo_Agent
 cd Deliveroo_Agent
-npm run setup
+npm install
 ```
-Create a `.env` with the following fields
-```bash 
-HOST=YOUR_HOST_NAME (e.g. http://localhost:8080)
-TOKEN=YOUR_TOKEN
-```
+Modify the `.env.example` file with the required fields and rename it to `.env`
+
+#### Fast Downward installation (PDDL)
+If you want your agent to use PDDL you can clone the `downward` repository and build it with the following commands:
+
+```bash
+cd pddl
+git clone https://github.com/aibasel/downward.git
+cd downward
+python3 build.py
+cd ../..
+``` 
 
 ### Running the Agent
 
-This project is written in TypeScript and uses ES Modules. We have provided npm scripts to handle the compilation and execution automatically.
+You can run the agent in different setups:
 
-To compile and run the agent in one command:
+Single Agent BDI:
 ```bash
-npm start
+node --experimental-strip-types main.ts
 ```
 
-#### For active development (Watch Mode):
-If you are modifying the code, you can run the development script. This keeps the compiler open whilst you modify the programs:
+Single Agent with LLM (BDI + LLM interface):
 ```bash
-npm run dev
+node --experimental-strip-types main.ts --use-llm
 ```
 
-# Note
-Note that the BDI loop is not implemented yet, this is just an initial commit. 
+Multi Agent mode (two terminals, BDI + LLM):
+```bash
+# Terminal 1
+node --experimental-strip-types main.ts
+# Terminal 2
+node --experimental-strip-types main.ts --use-llm
+```
+(Not implemented yet)
 
+## Run Tests
 
+Single Agent BDI as:
+```bash
+TODO
+``` 
 
+Multi Agent mode (BDI + LLM)
+```bash
+TODO
+``` 
+
+To run LLM tests you need to configure your `.env` first. Then from the directory `Agent/` run:
+
+```bash
+node --experimental-strip-types tests/llm_tests.ts
+```

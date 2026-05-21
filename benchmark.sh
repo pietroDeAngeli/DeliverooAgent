@@ -3,12 +3,23 @@
 set -euo pipefail
 
 RUN_DURATION=60
+SERVER_TIMEOUT=60
+AGENT_TIMEOUT=60
+BETWEEN_MAP_SLEEP=2
 MAPS=()
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -d|--duration)
       RUN_DURATION="$2"
+      shift 2
+      ;;
+    --server-timeout)
+      SERVER_TIMEOUT="$2"
+      shift 2
+      ;;
+    --agent-timeout)
+      AGENT_TIMEOUT="$2"
       shift 2
       ;;
     *)
@@ -24,7 +35,10 @@ PROJECT_ROOT="$(realpath "$ROOT/..")"
 BACKEND="$(realpath "$PROJECT_ROOT/Deliveroo.js/backend")"
 AGENT="$ROOT"
 GAMES_DIR="$(realpath "$PROJECT_ROOT/Deliveroo.js/packages/@unitn-asa/deliveroo-js-assets/assets/games")"
-RESULTS="$ROOT/benchmark_results.csv"
+
+RESULTS_DIR="$ROOT/results"
+mkdir -p "$RESULTS_DIR"
+RESULTS="$RESULTS_DIR/benchmark_results.csv"
 
 SERVER_URL="http://localhost:8080"
 AGENTS_API="$SERVER_URL/api/agents"
@@ -33,27 +47,6 @@ SERVER_STDOUT="$ROOT/server_stdout.log"
 SERVER_STDERR="$ROOT/server_stderr.log"
 AGENT_STDOUT="$ROOT/agent_stdout.log"
 AGENT_STDERR="$ROOT/agent_stderr.log"
-
-wait_server() {
-  local timeout="${1:-30}"
-  local start
-  start="$(date +%s)"
-
-  while true; do
-    if curl -fsS "$SERVER_URL" >/dev/null 2>&1; then
-      return 0
-    fi
-
-    local now
-    now="$(date +%s)"
-
-    if (( now - start >= timeout )); then
-      return 1
-    fi
-
-    sleep 0.3
-  done
-}
 
 wait_port_free() {
   local timeout="${1:-10}"
@@ -77,24 +70,23 @@ wait_port_free() {
 }
 
 kill_port_8080() {
-  if command -v lsof >/dev/null 2>&1; then
-    local pids
-    pids="$(lsof -ti :8080 2>/dev/null || true)"
-
-    if [[ -n "$pids" ]]; then
-      echo "  Killing process(es) on port 8080: $pids"
-      kill -TERM $pids 2>/dev/null || true
-      sleep 0.5
-      kill -KILL $pids 2>/dev/null || true
-    fi
-  else
+  if ! command -v lsof >/dev/null 2>&1; then
     echo "  Warning: lsof not installed. Install it with: sudo apt install -y lsof"
+    return 0
+  fi
+
+  local pids
+  pids="$(lsof -ti :8080 2>/dev/null || true)"
+
+  if [[ -n "$pids" ]]; then
+    echo "  Killing process(es) on port 8080: $pids"
+    kill -TERM $pids 2>/dev/null || true
+    sleep 0.7
+    kill -KILL $pids 2>/dev/null || true
   fi
 }
 
-initial_cleanup() {
-  echo "Initial cleanup..."
-
+kill_matching_processes() {
   pkill -f "node --experimental-strip-types main.ts" 2>/dev/null || true
   pkill -f "node main.ts" 2>/dev/null || true
   pkill -f "nodemon" 2>/dev/null || true
@@ -102,9 +94,16 @@ initial_cleanup() {
   pkill -f "Deliveroo.js/backend" 2>/dev/null || true
   pkill -f "npm start" 2>/dev/null || true
   pkill -f "npm run dev" 2>/dev/null || true
+}
 
+initial_cleanup() {
+  echo "Initial cleanup..."
+
+  kill_matching_processes
   kill_port_8080
-  sleep 0.5
+  wait_port_free 10 || true
+
+  sleep 1
 }
 
 kill_process_group() {
@@ -115,10 +114,10 @@ kill_process_group() {
     return 0
   fi
 
-  # Kill the whole process group. The minus before PID is intentional.
   if kill -0 "$pid" 2>/dev/null; then
+    echo "  Stopping $label process group: $pid"
     kill -TERM "-$pid" 2>/dev/null || true
-    sleep 0.5
+    sleep 0.7
     kill -KILL "-$pid" 2>/dev/null || true
   fi
 }
@@ -130,13 +129,66 @@ cleanup_run() {
   kill_process_group "$agent_pid" "agent"
   kill_process_group "$server_pid" "server"
 
-  # Fallback only if the port is still occupied.
-  if lsof -ti :8080 >/dev/null 2>&1; then
-    echo "  Port 8080 still busy after group kill. Cleaning..."
-    kill_port_8080
-  fi
+  kill_matching_processes
+  kill_port_8080
+  wait_port_free 10 || true
 
-  wait_port_free 5 || true
+  sleep "$BETWEEN_MAP_SLEEP"
+}
+
+wait_server() {
+  local timeout="${1:-60}"
+  local start
+  start="$(date +%s)"
+
+  while true; do
+    if curl -fsS "$AGENTS_API" >/dev/null 2>&1; then
+      return 0
+    fi
+
+    local now
+    now="$(date +%s)"
+
+    if (( now - start >= timeout )); then
+      return 1
+    fi
+
+    sleep 0.5
+  done
+}
+
+wait_agent_registered() {
+  local timeout="${1:-60}"
+  local start
+  start="$(date +%s)"
+
+  while true; do
+    if curl -fsS "$AGENTS_API" 2>/dev/null | node -e '
+      let data = "";
+
+      process.stdin.on("data", chunk => data += chunk);
+
+      process.stdin.on("end", () => {
+        try {
+          const agents = JSON.parse(data);
+          process.exit(Array.isArray(agents) && agents.length > 0 ? 0 : 1);
+        } catch {
+          process.exit(1);
+        }
+      });
+    '; then
+      return 0
+    fi
+
+    local now
+    now="$(date +%s)"
+
+    if (( now - start >= timeout )); then
+      return 1
+    fi
+
+    sleep 0.3
+  done
 }
 
 get_agent_score() {
@@ -173,6 +225,22 @@ get_agent_score() {
   ' || echo "N/A,N/A,N/A"
 }
 
+print_last_logs() {
+  local label="${1:-logs}"
+
+  echo "  Last $label server stdout:"
+  tail -n 60 "$SERVER_STDOUT" 2>/dev/null || true
+
+  echo "  Last $label server stderr:"
+  tail -n 60 "$SERVER_STDERR" 2>/dev/null || true
+
+  echo "  Last $label agent stdout:"
+  tail -n 60 "$AGENT_STDOUT" 2>/dev/null || true
+
+  echo "  Last $label agent stderr:"
+  tail -n 60 "$AGENT_STDERR" 2>/dev/null || true
+}
+
 on_exit() {
   echo ""
   echo "Cleaning up before exit..."
@@ -202,6 +270,17 @@ if ! command -v lsof >/dev/null 2>&1; then
   exit 1
 fi
 
+if ! command -v curl >/dev/null 2>&1; then
+  echo "curl is required. Install it with:"
+  echo "sudo apt install -y curl"
+  exit 1
+fi
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "node is required."
+  exit 1
+fi
+
 if [[ ${#MAPS[@]} -eq 0 ]]; then
   mapfile -t ALL_MAPS < <(
     find "$GAMES_DIR" -maxdepth 1 -name "*.json" -printf "%f\n" |
@@ -219,10 +298,12 @@ fi
 
 echo "Maps to benchmark (${#ALL_MAPS[@]}): $(IFS=,; echo "${ALL_MAPS[*]}")"
 echo "Duration per map: $RUN_DURATION seconds"
+echo "Server timeout: $SERVER_TIMEOUT seconds"
+echo "Agent timeout: $AGENT_TIMEOUT seconds"
 echo "Results file: $RESULTS"
 echo ""
 
-echo "map,score,penalty,net_score,duration_s,timestamp" > "$RESULTS"
+echo "map,score,penalty,net_score,duration_s,timestamp,status" > "$RESULTS"
 
 initial_cleanup
 
@@ -233,16 +314,31 @@ for map in "${ALL_MAPS[@]}"; do
   echo "Map: $map"
   echo "  Map file: $map_file"
 
+  score="N/A"
+  penalty="N/A"
+  net="N/A"
+  elapsed=0
+  status="OK"
+  server_pid=""
+  agent_pid=""
+
   if [[ ! -f "$map_file" ]]; then
     echo "  Map file not found: $map_file"
+    ts="$(date '+%Y-%m-%d %H:%M:%S')"
+    echo "$map,$score,$penalty,$net,$elapsed,$ts,MAP_NOT_FOUND" >> "$RESULTS"
     continue
   fi
 
   if lsof -ti :8080 >/dev/null 2>&1; then
     echo "  Port 8080 busy before starting map. Cleaning..."
     kill_port_8080
-    wait_port_free 5 || true
+    wait_port_free 10 || true
   fi
+
+  : > "$SERVER_STDOUT"
+  : > "$SERVER_STDERR"
+  : > "$AGENT_STDOUT"
+  : > "$AGENT_STDERR"
 
   echo "  Starting server..."
 
@@ -255,13 +351,12 @@ for map in "${ALL_MAPS[@]}"; do
 
   echo "  Server PID $server_pid starting..."
 
-  if ! wait_server 30; then
-    echo "  Server did not start in time - skipping $map"
-    echo "  Last server stdout:"
-    tail -n 40 "$SERVER_STDOUT" 2>/dev/null || true
-    echo "  Last server stderr:"
-    tail -n 40 "$SERVER_STDERR" 2>/dev/null || true
-
+  if ! wait_server "$SERVER_TIMEOUT"; then
+    echo "  Server did not become ready in ${SERVER_TIMEOUT}s - skipping $map"
+    print_last_logs "failed-start"
+    status="SERVER_TIMEOUT"
+    ts="$(date '+%Y-%m-%d %H:%M:%S')"
+    echo "$map,$score,$penalty,$net,$elapsed,$ts,$status" >> "$RESULTS"
     cleanup_run "" "$server_pid"
     continue
   fi
@@ -279,7 +374,19 @@ for map in "${ALL_MAPS[@]}"; do
 
   agent_pid=$!
 
-  echo "  Agent PID $agent_pid started. Running for $RUN_DURATION s..."
+  echo "  Agent PID $agent_pid started. Waiting for registration..."
+
+  if ! wait_agent_registered "$AGENT_TIMEOUT"; then
+    echo "  Agent did not register in ${AGENT_TIMEOUT}s - skipping $map"
+    print_last_logs "agent-registration"
+    status="AGENT_TIMEOUT"
+    ts="$(date '+%Y-%m-%d %H:%M:%S')"
+    echo "$map,$score,$penalty,$net,$elapsed,$ts,$status" >> "$RESULTS"
+    cleanup_run "$agent_pid" "$server_pid"
+    continue
+  fi
+
+  echo "  Agent registered. Starting benchmark timer for $RUN_DURATION s..."
 
   start_time="$(date +%s)"
   sleep "$RUN_DURATION"
@@ -290,13 +397,11 @@ for map in "${ALL_MAPS[@]}"; do
 
   ts="$(date '+%Y-%m-%d %H:%M:%S')"
 
-  echo "  Score: $score  |  Penalty: $penalty  |  Net: $net"
+  echo "  Score: $score  |  Penalty: $penalty  |  Net: $net  |  Elapsed: $elapsed s"
 
   cleanup_run "$agent_pid" "$server_pid"
 
-  sleep 0.5
-
-  echo "$map,$score,$penalty,$net,$elapsed,$ts" >> "$RESULTS"
+  echo "$map,$score,$penalty,$net,$elapsed,$ts,$status" >> "$RESULTS"
 done
 
 echo ""
