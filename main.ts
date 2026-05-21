@@ -7,6 +7,7 @@ import { Desire, generateDesires } from "./BDI/Desire.ts";
 import { reviseIntention } from "./BDI/Intentions.ts";
 import * as utils from "./utils.ts";
 import { getPddlPath } from "./pddl_planner.ts";
+import { LLMClient } from "./LLM/llm.ts";
 
 dotenv.config();
 
@@ -39,6 +40,15 @@ const INTENTION_BLOCK_MS = 8_000;
 const USE_PDDL           = process.env.USE_PDDL === 'true';
 
 console.log(`[Planner] ${USE_PDDL ? 'PDDL local (Fast Downward)' : 'BFS (default)'}`);
+
+// ── LLM state ─────────────────────────────────────────────────────────────────
+
+const godToken = "";
+const godID = "";
+const godName = "";
+let useLLM = false;
+let answer = "";
+let llm = new LLMClient();
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -197,6 +207,18 @@ socket.onSensing((sensing: any) => {
     }
 
     bdiStep();
+});
+
+socket.onMsg( async (id: string, name: string, msg: any, reply: ((response: any) => void) | undefined) => {
+    if (useLLM && name === godName) {
+        console.log("new msg received: ", msg);
+        
+        answer = await llm.processMessage(msg, myAgent ? { x: myAgent.pos.x, y: myAgent.pos.y } : null);
+        
+        if (answer !== "DO NOT REPLY" && reply) {
+            reply(answer);
+        }
+    }
 });
 
 // ── BDI loop ──────────────────────────────────────────────────────────────────
