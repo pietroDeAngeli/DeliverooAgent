@@ -1,5 +1,5 @@
 ﻿import * as utils from "../utils.ts";
-import type { Agent, World, Parcel, Position } from "./Belief.ts";
+import type { Agent, World, Parcel } from "./Belief.ts";
 
 export class Desire {
     type: string;
@@ -81,6 +81,7 @@ export function generateDesires(
     carrying: Parcel[],
     spawnVisitLog: Map<string, number> = new Map(),
     extraBlocked: Set<string> = new Set(),
+    llmGoToTile: Desire[] = [],
 ): Desire[] {
     if (!myAgent || !worldMap) return [];
 
@@ -146,6 +147,9 @@ export function generateDesires(
 
     // ── explore (always generated; utility < 1 so pickup/delivery always dominate) ──
     desires.push(...buildExploreDesires(agentFinder, worldMap, spawnVisitLog, decayPerStep));
+
+    // ── go_to (LLM) ─────────────────────────────────────────────────────────────────
+    desires.push(...llmGoToTile);
 
     return desires.sort((a, b) => b.utility - a.utility);
 }

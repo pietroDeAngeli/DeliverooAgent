@@ -9,6 +9,12 @@ const baseURL = process.env.LITELLM_BASE_URL;
 const apiKey = process.env.LITELLM_API_KEY;
 const MODEL = process.env.LOCAL_MODEL;
 
+export type LLMUpdate = {
+    goToTiles: Array<{ x: number; y: number; utility: number }>;
+    blockedTiles: string[]; // "x,y" format
+    deliveryConstraints: Array<{ direction: string; points: number }>;
+};
+
 export class LLMClient {
     private client: OpenAI;
 
@@ -32,6 +38,10 @@ export class LLMClient {
     ];
 
     // ---- Calls ----
+
+    private stripMarkdown(text: string): string {
+        return text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+    }
 
     private async callModel(messages: any, { temperature = 0 } = {}) {
         if (!MODEL) {
@@ -61,21 +71,86 @@ export class LLMClient {
     }
 
     // ---- Tools ----
+    private async splitMessage(user_input: string): Promise<Array<string>> {
+        const messages = [
+            { role: "system", content: prompts.SPLITTER_PROMPT },
+            { role: "user", content: user_input },
+        ];
+        const response = await this.callModel(messages);
+        try {
+            return JSON.parse(this.stripMarkdown(response));
+        } catch (error) {
+            return [user_input]; // fallback: treat as single message
+        }
+    }
+
     private async answerGeneralQuestion(question: string): Promise<string> {
         try {
             const messages = [
-                {
-                    role: "system",
-                    content: prompts.GENERAL_QUESTION_PROMPT,
-                },
-                {
-                    role: "user",
-                    content: question,
-                },
+                { role: "system", content: prompts.GENERAL_QUESTION_PROMPT },
+                { role: "user", content: question },
             ];
             return await this.callModel(messages, { temperature: 0.1 });
         } catch (error) {
             return `Error: ${error instanceof Error ? error.message : String(error)}`;
+        }
+    }
+
+    private async extractCityName(text: string): Promise<string> {
+        const messages = [
+            { role: "system", content: prompts.GET_CITY_PROMPT },
+            { role: "user", content: text },
+        ];
+        return await this.callModel(messages);
+    }
+
+    private async extractMathExpression(text: string): Promise<string> {
+        const messages = [
+            { role: "system", content: prompts.GET_EXPRESSION_PROMPT },
+            { role: "user", content: text },
+        ];
+        return await this.callModel(messages);
+    }
+
+    private async planTasks(msg: string): Promise<{calculations: any[], cleanMessage: string}> {
+        const messages = [
+            { role: "system", content: prompts.TASK_PLANNER_PROMPT },
+            { role: "user", content: msg },
+        ];
+        const response = await this.callModel(messages);
+        try {
+            return JSON.parse(this.stripMarkdown(response));
+        } catch (error) {
+            console.error("Task planner parsing error:", error);
+            return { calculations: [], cleanMessage: msg };
+        }
+    }
+
+    private async extractDeliveryConstraint(text: string): Promise<{ direction: string; points: number } | null> {
+        const messages = [
+            { role: "system", content: prompts.DELIVERY_CONSTRAINT_PROMPT },
+            { role: "user", content: text },
+        ];
+        const response = await this.callModel(messages);
+        try {
+            return JSON.parse(this.stripMarkdown(response));
+        } catch (error) {
+            console.error("Delivery constraint parsing error:", error);
+            return null;
+        }
+    }
+
+    private async generateDesire(text: string): Promise<{ action: string; x: number; y: number; points: number } | null> {
+        const messages = [
+            { role: "system", content: prompts.DESIRE_GENERATION_PROMPT },
+            { role: "user", content: text },
+        ];
+        const response = await this.callModel(messages);
+        try {
+            return JSON.parse(this.stripMarkdown(response));
+        } catch (error) {
+            console.error("Desire generation parsing error:", error);
+            return null;
         }
     }
 
@@ -86,75 +161,74 @@ export class LLMClient {
     }
 
     // ---- Orchestrator ----
-    private async decideNextAction(userInput: string) {
-        this.messages = this.messages.concat({
-            role: "system",
-            content: prompts.ORCHESTRATOR_PROMPT,
-        });
-        this.messages = this.messages.concat({
-            role: "user",
-            content: userInput,
-        });
-        const response = await this.callModel(this.messages);
 
+    private async decideNextAction(userInput: string) {
+        const messages = [
+            { role: "system", content: prompts.ORCHESTRATOR_PROMPT },
+            { role: "user", content: userInput },
+        ];
+        const response = await this.callModel(messages);
         return response ? this.extractAction(response) : "Error: no valid response from model.";
     }
 
     // ---- Main listener ----
 
-    async processMessage(msg: any, agent_position: any) {
-        // clear memory at the beginning of each message processing
-        this.clearMemory();
-        const FALLBACK = "DO NOT REPLY";
+    async processMessage(msg: string, agent_position: any): Promise<{ reply: string; updates: LLMUpdate }> {
+        const EMPTY: { reply: string; updates: LLMUpdate } = { reply: "", updates: { goToTiles: [], blockedTiles: [], deliveryConstraints: [] } };
 
-        // Empty message, return fallback
         if (msg.trim() === "") {
-            return FALLBACK;
+            return EMPTY;
         }
 
-        let action = await this.decideNextAction(msg);
-        if (action.startsWith("Error")) {
-            return action;
+        // Step 1: Plan and resolve nested math expressions
+        const plan = await this.planTasks(msg);
+        const calcResults: Record<string, string> = {};
+        for (const calc of plan.calculations) {
+            calcResults[calc.placeholder] = await tools.calculate(calc.expr);
+        }
+        let cleanMsg = plan.cleanMessage;
+        for (const [placeholder, result] of Object.entries(calcResults)) {
+            cleanMsg = cleanMsg.replace(placeholder, result);
         }
 
-        if (action != "generate_belief") {
+        // Step 2: Split into sub-requests and dispatch each one
+        const msgs: Array<string> = await this.splitMessage(cleanMsg);
+        let replyText = "";
+        const updates: LLMUpdate = { goToTiles: [], blockedTiles: [], deliveryConstraints: [] };
 
-            let actionResult: any;
-
-            if (action === "calculate" || action === "get_my_position") {
-                switch (action) {
-                    case "calculate":
-                        actionResult = await tools.calculate(msg);
-                        break;
-                    case "get_my_position":
-                        actionResult = await tools.getMyPosition(agent_position);
-                        break;
-                }
-            } else if (action === "get_current_time") {
-                // extract city name from user input
-                const cityMessages = [
-                    {
-                        role: "system",
-                        content: prompts.GET_CITY_PROMPT,
-                    },
-                    {
-                        role: "user",
-                        content: msg,
-                    },
-                ];
-                const city = await this.callModel(cityMessages);
-                if (city.startsWith("Error: City not found")) {
-                    return city;
-                }
-            }else if (action === "common_knowledge") {
-                return await this.answerGeneralQuestion(msg);
-            }else if (action === "generate_belief") {
-                // create new belief
+        for (const subMsg of msgs) {
+            const action = await this.decideNextAction(subMsg);
+            if (action.startsWith("Error")) {
+                return { reply: action, updates };
             }
-        }   
 
-        // answer was a belif, return fallback
-        return FALLBACK;
-    }   
+            if (action === "calculate") {
+                const expr = await this.extractMathExpression(subMsg);
+                replyText += "The result is " + await tools.calculate(expr) + ". ";
+            } else if (action === "get_my_position") {
+                replyText += "My current position is " + await tools.getMyPosition(agent_position) + ". ";
+            } else if (action === "get_current_time") {
+                const city = await this.extractCityName(subMsg);
+                replyText += await tools.getCurrentTime(city) + ". ";
+            } else if (action === "common_knowledge") {
+                replyText += await this.answerGeneralQuestion(subMsg) + ". ";
+            } else if (action === "generate_desire") {
+                const desire = await this.generateDesire(subMsg);
+                if (desire) {
+                    if (desire.action === "avoid" || desire.points < 0) {
+                        updates.blockedTiles.push(`${desire.x},${desire.y}`);
+                    } else {
+                        updates.goToTiles.push({ x: desire.x, y: desire.y, utility: desire.points });
+                    }
+                }
+            } else if (action === "generate_delivery_constraint") {
+                const constraint = await this.extractDeliveryConstraint(subMsg);
+                if (constraint) {
+                    updates.deliveryConstraints.push(constraint);
+                }
+            }
+        }
+        return { reply: replyText.trim(), updates };
+    }
 
 }

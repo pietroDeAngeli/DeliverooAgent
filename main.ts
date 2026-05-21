@@ -42,13 +42,17 @@ const USE_PDDL           = process.env.USE_PDDL === 'true';
 console.log(`[Planner] ${USE_PDDL ? 'PDDL local (Fast Downward)' : 'BFS (default)'}`);
 
 // ── LLM state ─────────────────────────────────────────────────────────────────
+// This is basically the belief state for the LLM
 
-const godToken = "";
 const godID = "";
 const godName = "";
 let useLLM = false;
-let answer = "";
 let llm = new LLMClient();
+let llmDesires: Desire[] = [];
+let llmBlockedTiles: Set<string> = new Set();
+let llmDeliveryCarryMultiplier: Map<number, number> = new Map();
+let llmGoToTile: Desire[] = []; // prevedo loop infinito
+// TODO: drop in <dir>most tile to get X points not implemented
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -56,6 +60,21 @@ function clearIntention(): void {
     currentIntention = null;
     lastIntention    = null;
     currentPath      = null;
+}
+
+function findDirectionalDeliveryTile(direction: string): { x: number; y: number } | null {
+    if (!worldMap) return null;
+    const tiles = [...worldMap.tiles.entries()]
+        .filter(([, t]) => t === '2')
+        .map(([key]) => { const [x, y] = key.split(',').map(Number); return { x, y }; });
+    if (tiles.length === 0) return null;
+    switch (direction) {
+        case 'leftmost':  return tiles.reduce((a, b) => a.x < b.x ? a : b);
+        case 'rightmost': return tiles.reduce((a, b) => a.x > b.x ? a : b);
+        case 'topmost':   return tiles.reduce((a, b) => a.y < b.y ? a : b);
+        case 'bottommost':return tiles.reduce((a, b) => a.y > b.y ? a : b);
+        default: return null;
+    }
 }
 
 function handleNoPath(key: string, label: string): void {
@@ -210,13 +229,30 @@ socket.onSensing((sensing: any) => {
 });
 
 socket.onMsg( async (id: string, name: string, msg: any, reply: ((response: any) => void) | undefined) => {
-    if (useLLM && name === godName) {
+    if (useLLM && name === godName && id === godID) {
         console.log("new msg received: ", msg);
-        
-        answer = await llm.processMessage(msg, myAgent ? { x: myAgent.pos.x, y: myAgent.pos.y } : null);
-        
-        if (answer !== "DO NOT REPLY" && reply) {
-            reply(answer);
+
+        const result = await llm.processMessage(msg, myAgent ? { x: myAgent.pos.x, y: myAgent.pos.y } : null);
+
+        // Apply desire updates from LLM
+        for (const tile of result.updates.goToTiles) {
+            llmGoToTile.push(new Desire("go_to", tile.x, tile.y, tile.utility));
+        }
+        for (const tileKey of result.updates.blockedTiles) {
+            llmBlockedTiles.add(tileKey);
+        }
+        for (const constraint of result.updates.deliveryConstraints) {
+            const tile = findDirectionalDeliveryTile(constraint.direction);
+            if (!tile) continue;
+            if (constraint.points < 0) {
+                llmBlockedTiles.add(`${tile.x},${tile.y}`);
+            } else {
+                llmGoToTile.push(new Desire("go_delivery", tile.x, tile.y, constraint.points));
+            }
+        }
+
+        if (result.reply && reply) {
+            reply(result.reply);
         }
     }
 });
@@ -246,11 +282,19 @@ async function bdiStep(): Promise<void> {
 
         // ── Desire generation ─────────────────────────────────────────────────
         const now = Date.now();
-        const activeBlocked = new Set([
+        let activeBlocked = new Set([
             ...[...tempBlockedCells.entries()].filter(([, u]) => u > now).map(([k]) => k),
             ...[...worldMap.other_agents.values()].filter(a => a.stationaryTicks >= 3).map(a => `${a.pos.x},${a.pos.y}`),
         ]);
-        const desires = generateDesires(myAgent, worldMap, carrying, spawnVisitLog, activeBlocked);
+        
+        if (llmBlockedTiles.size > 0) { // Add the LLM blocked tiles
+            for (const tile of llmBlockedTiles) {
+                activeBlocked.add(tile);
+            }
+        }
+        
+        let desires = generateDesires(myAgent, worldMap, carrying, spawnVisitLog, activeBlocked, llmGoToTile);
+
 
         // ── Intention revision ────────────────────────────────────────────────
         const prevIntention  = currentIntention;
@@ -372,7 +416,14 @@ async function bdiStep(): Promise<void> {
         } else if (currentIntention.type === 'go_delivery') {
             if (myAgent.pos.x === currentIntention.x_target && myAgent.pos.y === currentIntention.y_target) {
                 const res = await socket.emitPutdown();
-                if (res) { console.log(`Delivered at (${myAgent.pos.x},${myAgent.pos.y})`); carrying.length = 0; }
+                if (res) {
+                    console.log(`Delivered at (${myAgent.pos.x},${myAgent.pos.y})`); 
+                    carrying.length = 0;
+                    // Remove any LLM-injected go_delivery desire for this tile
+                    llmGoToTile = llmGoToTile.filter(d =>
+                        !(d.type === 'go_delivery' && d.x_target === currentIntention!.x_target && d.y_target === currentIntention!.y_target)
+                    );
+                }
                 clearIntention();
                 return;
             }
@@ -398,6 +449,23 @@ async function bdiStep(): Promise<void> {
             if (!currentPath?.length) {
                 spawnVisitLog.set(`${target.x},${target.y}`, Date.now());
                 clearIntention();
+                return;
+            }
+            await stepTowards(currentPath[0], utils.nextPosition(myAgent.pos, currentPath[0]));
+
+        } else if (currentIntention.type === 'go_to') {
+            if (myAgent.pos.x === currentIntention.x_target && myAgent.pos.y === currentIntention.y_target) {
+                console.log(`[go_to] Reached (${currentIntention.x_target},${currentIntention.y_target}), removing desire`);
+                llmGoToTile = llmGoToTile.filter(d =>
+                    d.x_target !== currentIntention!.x_target || d.y_target !== currentIntention!.y_target
+                );
+                clearIntention();
+                return;
+            }
+            if (!currentPath?.length)
+                currentPath = await planPath(myAgent.pos, { x: currentIntention.x_target, y: currentIntention.y_target });
+            if (!currentPath?.length) {
+                handleNoPath(`go_to:${currentIntention.x_target},${currentIntention.y_target}`, `(${currentIntention.x_target},${currentIntention.y_target})`);
                 return;
             }
             await stepTowards(currentPath[0], utils.nextPosition(myAgent.pos, currentPath[0]));
