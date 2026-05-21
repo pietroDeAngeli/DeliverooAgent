@@ -38,15 +38,16 @@ let bdiTick          = 0;
 const STUCK_THRESHOLD    = 3;
 const INTENTION_BLOCK_MS = 8_000;
 const USE_PDDL           = process.env.USE_PDDL === 'true';
+const USE_LLM_ARG        = process.argv.includes('--use-llm');
 
 console.log(`[Planner] ${USE_PDDL ? 'PDDL local (Fast Downward)' : 'BFS (default)'}`);
-
+console.log(`[LLM]     ${(USE_LLM_ARG || process.env.USE_LLM === 'true') ? 'enabled' : 'disabled'}`);
 // ── LLM state ─────────────────────────────────────────────────────────────────
 // This is basically the belief state for the LLM
 
 const godID = "";
 const godName = "";
-let useLLM = false;
+let useLLM = USE_LLM_ARG || process.env.USE_LLM === 'true';
 let llm = new LLMClient();
 let llmDesires: Desire[] = [];
 let llmBlockedTiles: Set<string> = new Set();
