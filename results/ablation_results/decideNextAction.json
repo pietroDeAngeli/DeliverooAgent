@@ -1,0 +1,211 @@
+{
+  "category": "decideNextAction",
+  "timestamp": "2026-05-21T21-54-40",
+  "total": 25,
+  "passed": 25,
+  "failed": 0,
+  "accuracy_pct": 100,
+  "avg_latency_ms": 323,
+  "tests": [
+    {
+      "id": 1,
+      "description": "Simple math question → calculate",
+      "input": "What is 2 + 2?",
+      "passed": true,
+      "latency_ms": 1325,
+      "actual": "calculate"
+    },
+    {
+      "id": 2,
+      "description": "Multiplication → calculate",
+      "input": "Calculate 15 * 4",
+      "passed": true,
+      "latency_ms": 203,
+      "actual": "calculate"
+    },
+    {
+      "id": 3,
+      "description": "Complex expression → calculate",
+      "input": "What is sqrt(144) + 3^2?",
+      "passed": true,
+      "latency_ms": 204,
+      "actual": "calculate"
+    },
+    {
+      "id": 4,
+      "description": "Time in a city → get_current_time",
+      "input": "What is the current time in London?",
+      "passed": true,
+      "latency_ms": 231,
+      "actual": "get_current_time"
+    },
+    {
+      "id": 5,
+      "description": "Time in Tokyo → get_current_time",
+      "input": "Tell me what time it is in Tokyo",
+      "passed": true,
+      "latency_ms": 241,
+      "actual": "get_current_time"
+    },
+    {
+      "id": 6,
+      "description": "Current time in Paris → get_current_time",
+      "input": "What time is it now in Paris?",
+      "passed": true,
+      "latency_ms": 245,
+      "actual": "get_current_time"
+    },
+    {
+      "id": 7,
+      "description": "My position → get_my_position",
+      "input": "Where am I?",
+      "passed": true,
+      "latency_ms": 306,
+      "actual": "get_my_position"
+    },
+    {
+      "id": 8,
+      "description": "Current position → get_my_position",
+      "input": "What is my current position?",
+      "passed": true,
+      "latency_ms": 242,
+      "actual": "get_my_position"
+    },
+    {
+      "id": 9,
+      "description": "Agent location → get_my_position",
+      "input": "Tell me my coordinates",
+      "passed": true,
+      "latency_ms": 269,
+      "actual": "get_my_position"
+    },
+    {
+      "id": 10,
+      "description": "Move to a tile → generate_desire",
+      "input": "Go to tile (3, 4) for +10 points",
+      "passed": true,
+      "latency_ms": 307,
+      "actual": "generate_desire"
+    },
+    {
+      "id": 11,
+      "description": "Move to location → generate_desire",
+      "input": "Move to position (7, 2)",
+      "passed": true,
+      "latency_ms": 307,
+      "actual": "generate_desire"
+    },
+    {
+      "id": 12,
+      "description": "Avoid tile → generate_desire",
+      "input": "Avoid tile (1, 1) it's dangerous",
+      "passed": true,
+      "latency_ms": 410,
+      "actual": "generate_desire"
+    },
+    {
+      "id": 13,
+      "description": "Go to corner → generate_desire",
+      "input": "Head to the bottom-left corner at (0,0)",
+      "passed": true,
+      "latency_ms": 307,
+      "actual": "generate_desire"
+    },
+    {
+      "id": 14,
+      "description": "General knowledge question → common_knowledge",
+      "input": "What is the capital of France?",
+      "passed": true,
+      "latency_ms": 306,
+      "actual": "common_knowledge"
+    },
+    {
+      "id": 15,
+      "description": "Historical fact → common_knowledge",
+      "input": "Who invented the telephone?",
+      "passed": true,
+      "latency_ms": 307,
+      "actual": "common_knowledge"
+    },
+    {
+      "id": 16,
+      "description": "Scientific fact → common_knowledge",
+      "input": "What is the speed of light?",
+      "passed": true,
+      "latency_ms": 308,
+      "actual": "common_knowledge"
+    },
+    {
+      "id": 17,
+      "description": "Delivery constraint leftmost → generate_delivery_constraint",
+      "input": "Drop packages in the leftmost tile for +5 points",
+      "passed": true,
+      "latency_ms": 307,
+      "actual": "generate_delivery_constraint"
+    },
+    {
+      "id": 18,
+      "description": "Delivery constraint rightmost → generate_delivery_constraint",
+      "input": "Deliver to the rightmost tile to earn 10 points",
+      "passed": true,
+      "latency_ms": 243,
+      "actual": "generate_delivery_constraint"
+    },
+    {
+      "id": 19,
+      "description": "Avoid delivery zone → generate_delivery_constraint",
+      "input": "Do not drop in the topmost tile",
+      "passed": true,
+      "latency_ms": 473,
+      "actual": "generate_delivery_constraint"
+    },
+    {
+      "id": 20,
+      "description": "Delivery bottommost penalty → generate_delivery_constraint",
+      "input": "You lose 5 points if you drop in the bottommost tile",
+      "passed": true,
+      "latency_ms": 308,
+      "actual": "generate_delivery_constraint"
+    },
+    {
+      "id": 21,
+      "description": "Division → calculate",
+      "input": "Compute 100 / 4",
+      "passed": true,
+      "latency_ms": 184,
+      "actual": "calculate"
+    },
+    {
+      "id": 22,
+      "description": "Italian: dove sono → get_my_position",
+      "input": "Dove sono adesso?",
+      "passed": true,
+      "latency_ms": 228,
+      "actual": "get_my_position"
+    },
+    {
+      "id": 23,
+      "description": "Italian: vai a casella → generate_desire",
+      "input": "Vai alla casella (5, 3) per +10 punti",
+      "passed": true,
+      "latency_ms": 304,
+      "actual": "generate_desire"
+    },
+    {
+      "id": 24,
+      "description": "Italian: calcola → calculate",
+      "input": "Calcola 7 * 8",
+      "passed": true,
+      "latency_ms": 195,
+      "actual": "calculate"
+    },
+    {
+      "id": 25,
+      "description": "Desire with avoid semantic → generate_desire",
+      "input": "Stay away from tile (9, 9), it has -20 pts",
+      "passed": true,
+      "latency_ms": 316,
+      "actual": "generate_desire"
+    }
+  ]
+}

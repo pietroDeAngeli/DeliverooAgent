@@ -1,0 +1,211 @@
+{
+  "category": "extractDeliveryConstraint",
+  "timestamp": "2026-05-21T21-54-40",
+  "total": 25,
+  "passed": 25,
+  "failed": 0,
+  "accuracy_pct": 100,
+  "avg_latency_ms": 667,
+  "tests": [
+    {
+      "id": 1,
+      "description": "Drop in leftmost for +5 points",
+      "input": "Drop packages in leftmost tile to get +5 points",
+      "passed": true,
+      "latency_ms": 604,
+      "actual": "{\"direction\":\"leftmost\",\"points\":5}"
+    },
+    {
+      "id": 2,
+      "description": "Drop in rightmost for +10 points",
+      "input": "Deliver to rightmost tile for +10 points",
+      "passed": true,
+      "latency_ms": 614,
+      "actual": "{\"direction\":\"rightmost\",\"points\":10}"
+    },
+    {
+      "id": 3,
+      "description": "Drop in topmost for +8 points",
+      "input": "Drop in topmost tile to earn 8 points",
+      "passed": true,
+      "latency_ms": 541,
+      "actual": "{\"direction\":\"topmost\",\"points\":8}"
+    },
+    {
+      "id": 4,
+      "description": "Drop in bottommost for +3 points",
+      "input": "Deliver to the bottommost tile for 3 pts",
+      "passed": true,
+      "latency_ms": 585,
+      "actual": "{\"direction\":\"bottommost\",\"points\":3}"
+    },
+    {
+      "id": 5,
+      "description": "Avoid leftmost tile (negative points)",
+      "input": "Avoid dropping in the leftmost tile",
+      "passed": true,
+      "latency_ms": 615,
+      "actual": "{\"direction\":\"leftmost\",\"points\":-1}"
+    },
+    {
+      "id": 6,
+      "description": "Do not drop in rightmost tile",
+      "input": "Do not drop in the rightmost tile",
+      "passed": true,
+      "latency_ms": 613,
+      "actual": "{\"direction\":\"rightmost\",\"points\":-1}"
+    },
+    {
+      "id": 7,
+      "description": "Penalty for bottommost tile",
+      "input": "You lose 5 points if you drop in the bottommost tile",
+      "passed": true,
+      "latency_ms": 614,
+      "actual": "{\"direction\":\"bottommost\",\"points\":-5}"
+    },
+    {
+      "id": 8,
+      "description": "Leftmost gives +20 points",
+      "input": "The leftmost tile gives you +20 points",
+      "passed": true,
+      "latency_ms": 552,
+      "actual": "{\"direction\":\"leftmost\",\"points\":20}"
+    },
+    {
+      "id": 9,
+      "description": "Rightmost is a bonus tile +15",
+      "input": "Delivering to the rightmost tile earns +15 points",
+      "passed": true,
+      "latency_ms": 677,
+      "actual": "{\"direction\":\"rightmost\",\"points\":15}"
+    },
+    {
+      "id": 10,
+      "description": "Topmost tile to avoid, -10 points",
+      "input": "Avoid the topmost tile, it costs you -10 pts",
+      "passed": true,
+      "latency_ms": 576,
+      "actual": "{\"direction\":\"topmost\",\"points\":-10}"
+    },
+    {
+      "id": 11,
+      "description": "Do not deliver to topmost",
+      "input": "Never deliver to the topmost tile",
+      "passed": true,
+      "latency_ms": 755,
+      "actual": "{\"direction\":\"topmost\",\"points\":-1}"
+    },
+    {
+      "id": 12,
+      "description": "Rightmost yields +25",
+      "input": "Drop here at the rightmost for 25 pts bonus",
+      "passed": true,
+      "latency_ms": 1025,
+      "actual": "{\"direction\":\"rightmost\",\"points\":25}"
+    },
+    {
+      "id": 13,
+      "description": "Leftmost not recommended",
+      "input": "I recommend not dropping in the leftmost tile",
+      "passed": true,
+      "latency_ms": 613,
+      "actual": "{\"direction\":\"leftmost\",\"points\":-1}"
+    },
+    {
+      "id": 14,
+      "description": "Bottommost gives +7",
+      "input": "The bottommost drop zone gives 7 points",
+      "passed": true,
+      "latency_ms": 614,
+      "actual": "{\"direction\":\"bottommost\",\"points\":7}"
+    },
+    {
+      "id": 15,
+      "description": "Rightmost forbidden tile",
+      "input": "The rightmost tile is forbidden for dropping",
+      "passed": true,
+      "latency_ms": 613,
+      "actual": "{\"direction\":\"rightmost\",\"points\":-1}"
+    },
+    {
+      "id": 16,
+      "description": "Leftmost with large reward +50",
+      "input": "Get +50 pts by dropping at leftmost",
+      "passed": true,
+      "latency_ms": 614,
+      "actual": "{\"direction\":\"leftmost\",\"points\":50}"
+    },
+    {
+      "id": 17,
+      "description": "Italian: sinistra (leftmost) +5",
+      "input": "Consegna sulla casella più a sinistra per +5 punti",
+      "passed": true,
+      "latency_ms": 1024,
+      "actual": "{\"direction\":\"leftmost\",\"points\":5}"
+    },
+    {
+      "id": 18,
+      "description": "Topmost delivery earns 12",
+      "input": "Topmost tile delivery earns you 12 points",
+      "passed": true,
+      "latency_ms": 614,
+      "actual": "{\"direction\":\"topmost\",\"points\":12}"
+    },
+    {
+      "id": 19,
+      "description": "Negative: lose 3 for bottommost",
+      "input": "Dropping at bottommost loses you 3 points",
+      "passed": true,
+      "latency_ms": 717,
+      "actual": "{\"direction\":\"bottommost\",\"points\":-3}"
+    },
+    {
+      "id": 20,
+      "description": "Rightmost penalty -8",
+      "input": "Rightmost tile gives -8 pts penalty",
+      "passed": true,
+      "latency_ms": 615,
+      "actual": "{\"direction\":\"rightmost\",\"points\":-8}"
+    },
+    {
+      "id": 21,
+      "description": "Leftmost is best spot +100",
+      "input": "The leftmost tile is worth 100 points",
+      "passed": true,
+      "latency_ms": 921,
+      "actual": "{\"direction\":\"leftmost\",\"points\":100}"
+    },
+    {
+      "id": 22,
+      "description": "Avoid bottommost tile",
+      "input": "Avoid the bottommost tile at all costs",
+      "passed": true,
+      "latency_ms": 541,
+      "actual": "{\"direction\":\"bottommost\",\"points\":-1}"
+    },
+    {
+      "id": 23,
+      "description": "Topmost with +30 reward",
+      "input": "Head to topmost delivery zone for a +30 point reward",
+      "passed": true,
+      "latency_ms": 688,
+      "actual": "{\"direction\":\"topmost\",\"points\":30}"
+    },
+    {
+      "id": 24,
+      "description": "Rightmost deducts 20 points",
+      "input": "Delivering to rightmost deducts 20 points",
+      "passed": true,
+      "latency_ms": 717,
+      "actual": "{\"direction\":\"rightmost\",\"points\":-20}"
+    },
+    {
+      "id": 25,
+      "description": "Bottommost bonus +6 points",
+      "input": "You gain 6 points from bottommost delivery",
+      "passed": true,
+      "latency_ms": 614,
+      "actual": "{\"direction\":\"bottommost\",\"points\":6}"
+    }
+  ]
+}

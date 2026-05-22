@@ -1,0 +1,211 @@
+{
+  "category": "extractCityName",
+  "timestamp": "2026-05-21T21-54-40",
+  "total": 25,
+  "passed": 25,
+  "failed": 0,
+  "accuracy_pct": 100,
+  "avg_latency_ms": 282,
+  "tests": [
+    {
+      "id": 1,
+      "description": "Simple city: London",
+      "input": "What is the current time in London?",
+      "passed": true,
+      "latency_ms": 506,
+      "actual": "London"
+    },
+    {
+      "id": 2,
+      "description": "Simple city: Paris",
+      "input": "Tell me the time in Paris",
+      "passed": true,
+      "latency_ms": 203,
+      "actual": "Paris"
+    },
+    {
+      "id": 3,
+      "description": "Simple city: Tokyo",
+      "input": "What time is it in Tokyo?",
+      "passed": true,
+      "latency_ms": 308,
+      "actual": "Tokyo"
+    },
+    {
+      "id": 4,
+      "description": "Simple city: New York",
+      "input": "What is the time in New York?",
+      "passed": true,
+      "latency_ms": 219,
+      "actual": "New York"
+    },
+    {
+      "id": 5,
+      "description": "Simple city: Rome",
+      "input": "Tell me the current time in Rome",
+      "passed": true,
+      "latency_ms": 293,
+      "actual": "Rome"
+    },
+    {
+      "id": 6,
+      "description": "Simple city: Berlin",
+      "input": "What time is it in Berlin right now?",
+      "passed": true,
+      "latency_ms": 204,
+      "actual": "Berlin"
+    },
+    {
+      "id": 7,
+      "description": "Simple city: Sydney",
+      "input": "What is the current time in Sydney?",
+      "passed": true,
+      "latency_ms": 307,
+      "actual": "Sydney"
+    },
+    {
+      "id": 8,
+      "description": "Simple city: Los Angeles",
+      "input": "What time is it in Los Angeles?",
+      "passed": true,
+      "latency_ms": 227,
+      "actual": "Los Angeles"
+    },
+    {
+      "id": 9,
+      "description": "City embedded in longer sentence",
+      "input": "I need to know the time in Moscow to schedule a call",
+      "passed": true,
+      "latency_ms": 285,
+      "actual": "Moscow"
+    },
+    {
+      "id": 10,
+      "description": "City with country context",
+      "input": "What time is it in Beijing, China?",
+      "passed": true,
+      "latency_ms": 306,
+      "actual": "Beijing"
+    },
+    {
+      "id": 11,
+      "description": "City with 'right now' emphasis",
+      "input": "Give me the time in Dubai right now",
+      "passed": true,
+      "latency_ms": 306,
+      "actual": "Dubai"
+    },
+    {
+      "id": 12,
+      "description": "City with 'currently'",
+      "input": "What is currently the time in Toronto?",
+      "passed": true,
+      "latency_ms": 204,
+      "actual": "Toronto"
+    },
+    {
+      "id": 13,
+      "description": "City in Italian sentence",
+      "input": "Che ore sono a Milano?",
+      "passed": true,
+      "latency_ms": 308,
+      "actual": "Milano"
+    },
+    {
+      "id": 14,
+      "description": "City in Italian sentence: Roma",
+      "input": "Che ora è a Roma adesso?",
+      "passed": true,
+      "latency_ms": 307,
+      "actual": "Roma"
+    },
+    {
+      "id": 15,
+      "description": "Capital city: Washington DC",
+      "input": "Tell me the time in Washington DC",
+      "passed": true,
+      "latency_ms": 306,
+      "actual": "Washington DC"
+    },
+    {
+      "id": 16,
+      "description": "City after 'local time' phrase",
+      "input": "What is the local time in Singapore?",
+      "passed": true,
+      "latency_ms": 195,
+      "actual": "Singapore"
+    },
+    {
+      "id": 17,
+      "description": "City with timezone mention",
+      "input": "What is the time in Amsterdam (CET timezone)?",
+      "passed": true,
+      "latency_ms": 215,
+      "actual": "Amsterdam"
+    },
+    {
+      "id": 18,
+      "description": "City: Mumbai",
+      "input": "Get me the current time in Mumbai",
+      "passed": true,
+      "latency_ms": 307,
+      "actual": "Mumbai"
+    },
+    {
+      "id": 19,
+      "description": "City: Cairo",
+      "input": "What is the time in Cairo?",
+      "passed": true,
+      "latency_ms": 307,
+      "actual": "Cairo"
+    },
+    {
+      "id": 20,
+      "description": "City with abbreviated form: NYC",
+      "input": "What time is it in NYC?",
+      "passed": true,
+      "latency_ms": 307,
+      "actual": "NYC"
+    },
+    {
+      "id": 21,
+      "description": "City: Seoul",
+      "input": "Current time in Seoul please",
+      "passed": true,
+      "latency_ms": 306,
+      "actual": "Seoul"
+    },
+    {
+      "id": 22,
+      "description": "City: Chicago",
+      "input": "What time is it in Chicago right now?",
+      "passed": true,
+      "latency_ms": 204,
+      "actual": "Chicago"
+    },
+    {
+      "id": 23,
+      "description": "City with 'for me' phrase",
+      "input": "Tell me the time for me in Madrid",
+      "passed": true,
+      "latency_ms": 307,
+      "actual": "Madrid"
+    },
+    {
+      "id": 24,
+      "description": "City: Bangkok",
+      "input": "I want to know the time in Bangkok",
+      "passed": true,
+      "latency_ms": 307,
+      "actual": "Bangkok"
+    },
+    {
+      "id": 25,
+      "description": "City: Nairobi",
+      "input": "What is the current time in Nairobi?",
+      "passed": true,
+      "latency_ms": 307,
+      "actual": "Nairobi"
+    }
+  ]
+}

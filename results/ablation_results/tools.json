@@ -1,0 +1,435 @@
+{
+  "category": "tools",
+  "timestamp": "2026-05-21T21-54-40",
+  "total": 53,
+  "passed": 53,
+  "failed": 0,
+  "accuracy_pct": 100,
+  "avg_latency_ms": 2,
+  "tests": [
+    {
+      "id": 1,
+      "description": "[calculate] Simple addition",
+      "input": "2+2",
+      "passed": true,
+      "latency_ms": 7,
+      "actual": "4"
+    },
+    {
+      "id": 2,
+      "description": "[calculate] Simple subtraction",
+      "input": "10-3",
+      "passed": true,
+      "latency_ms": 1,
+      "actual": "7"
+    },
+    {
+      "id": 3,
+      "description": "[calculate] Simple multiplication",
+      "input": "3*4",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "12"
+    },
+    {
+      "id": 4,
+      "description": "[calculate] Simple division",
+      "input": "10/4",
+      "passed": true,
+      "latency_ms": 1,
+      "actual": "2.5"
+    },
+    {
+      "id": 5,
+      "description": "[calculate] Power operation",
+      "input": "2^10",
+      "passed": true,
+      "latency_ms": 1,
+      "actual": "1024"
+    },
+    {
+      "id": 6,
+      "description": "[calculate] Square root",
+      "input": "sqrt(16)",
+      "passed": true,
+      "latency_ms": 4,
+      "actual": "4"
+    },
+    {
+      "id": 7,
+      "description": "[calculate] Parenthesized expression",
+      "input": "(2+3)*4",
+      "passed": true,
+      "latency_ms": 1,
+      "actual": "20"
+    },
+    {
+      "id": 8,
+      "description": "[calculate] Float arithmetic",
+      "input": "1.5 + 2.5",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "4"
+    },
+    {
+      "id": 9,
+      "description": "[calculate] Modulo",
+      "input": "10 % 3",
+      "passed": true,
+      "latency_ms": 7,
+      "actual": "1"
+    },
+    {
+      "id": 10,
+      "description": "[calculate] Absolute value",
+      "input": "abs(-7)",
+      "passed": true,
+      "latency_ms": 1,
+      "actual": "7"
+    },
+    {
+      "id": 11,
+      "description": "[calculate] Floor function",
+      "input": "floor(3.7)",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "3"
+    },
+    {
+      "id": 12,
+      "description": "[calculate] Ceil function",
+      "input": "ceil(3.2)",
+      "passed": true,
+      "latency_ms": 1,
+      "actual": "4"
+    },
+    {
+      "id": 13,
+      "description": "[calculate] Round function (half up)",
+      "input": "round(3.5)",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "4"
+    },
+    {
+      "id": 14,
+      "description": "[calculate] Min of two values",
+      "input": "min(3, 7)",
+      "passed": true,
+      "latency_ms": 7,
+      "actual": "3"
+    },
+    {
+      "id": 15,
+      "description": "[calculate] Max of two values",
+      "input": "max(3, 7)",
+      "passed": true,
+      "latency_ms": 5,
+      "actual": "7"
+    },
+    {
+      "id": 16,
+      "description": "[calculate] Pi constant rounded",
+      "input": "round(pi)",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "3"
+    },
+    {
+      "id": 17,
+      "description": "[calculate] Cube root",
+      "input": "cbrt(27)",
+      "passed": true,
+      "latency_ms": 1,
+      "actual": "3"
+    },
+    {
+      "id": 18,
+      "description": "[calculate] Nested arithmetic",
+      "input": "sqrt(4) + 3^2",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "11"
+    },
+    {
+      "id": 19,
+      "description": "[calculate] Log base 10",
+      "input": "log(100, 10)",
+      "passed": true,
+      "latency_ms": 1,
+      "actual": "2"
+    },
+    {
+      "id": 20,
+      "description": "[calculate] Sin of 0",
+      "input": "sin(0)",
+      "passed": true,
+      "latency_ms": 1,
+      "actual": "0"
+    },
+    {
+      "id": 21,
+      "description": "[calculate] Empty input returns error",
+      "input": "",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "Error: expression is required."
+    },
+    {
+      "id": 22,
+      "description": "[calculate] Expression too long returns error",
+      "input": "1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "Error: expression is too long."
+    },
+    {
+      "id": 23,
+      "description": "[calculate] Unsupported character returns error",
+      "input": "2 $ 3",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "Error: expression contains unsupported characters."
+    },
+    {
+      "id": 24,
+      "description": "[calculate] Blocked syntax (semicolon) returns error",
+      "input": "2+2; 3+3",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "Error: expression contains unsupported characters."
+    },
+    {
+      "id": 25,
+      "description": "[calculate] Unsupported identifier returns error",
+      "input": "foo(3)",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "Error: unsupported identifier \"foo\"."
+    },
+    {
+      "id": 26,
+      "description": "[calculate] Division by zero returns not-finite error",
+      "input": "1/0",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "Error: result is not finite."
+    },
+    {
+      "id": 27,
+      "description": "[calculate] Large multiplication",
+      "input": "1000 * 1000",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "1000000"
+    },
+    {
+      "id": 28,
+      "description": "[calculate] Negative result",
+      "input": "3 - 10",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "-7"
+    },
+    {
+      "id": 101,
+      "description": "[getCurrentTime] Known city: London",
+      "input": "London",
+      "passed": true,
+      "latency_ms": 40,
+      "actual": "The current local time in London is 2026-05-21 22:52:43 (Europe/London)."
+    },
+    {
+      "id": 102,
+      "description": "[getCurrentTime] Known city: Rome",
+      "input": "Rome",
+      "passed": true,
+      "latency_ms": 2,
+      "actual": "The current local time in Rome is 2026-05-21 23:52:44 (Europe/Rome)."
+    },
+    {
+      "id": 103,
+      "description": "[getCurrentTime] Known city: Tokyo",
+      "input": "Tokyo",
+      "passed": true,
+      "latency_ms": 2,
+      "actual": "The current local time in Tokyo is 2026-05-22 06:52:44 (Asia/Tokyo)."
+    },
+    {
+      "id": 104,
+      "description": "[getCurrentTime] Known city: New York",
+      "input": "New York",
+      "passed": true,
+      "latency_ms": 1,
+      "actual": "The current local time in New York is 2026-05-21 17:52:44 (America/New_York)."
+    },
+    {
+      "id": 105,
+      "description": "[getCurrentTime] Known city: Sydney",
+      "input": "Sydney",
+      "passed": true,
+      "latency_ms": 2,
+      "actual": "The current local time in Sydney is 2026-05-22 07:52:44 (Australia/Sydney)."
+    },
+    {
+      "id": 106,
+      "description": "[getCurrentTime] Known city: Dubai",
+      "input": "Dubai",
+      "passed": true,
+      "latency_ms": 1,
+      "actual": "The current local time in Dubai is 2026-05-22 01:52:44 (Asia/Dubai)."
+    },
+    {
+      "id": 107,
+      "description": "[getCurrentTime] Known city: Berlin",
+      "input": "Berlin",
+      "passed": true,
+      "latency_ms": 2,
+      "actual": "The current local time in Berlin is 2026-05-21 23:52:44 (Europe/Berlin)."
+    },
+    {
+      "id": 108,
+      "description": "[getCurrentTime] Known city: Los Angeles",
+      "input": "Los Angeles",
+      "passed": true,
+      "latency_ms": 3,
+      "actual": "The current local time in Los Angeles is 2026-05-21 14:52:44 (America/Los_Angeles)."
+    },
+    {
+      "id": 109,
+      "description": "[getCurrentTime] Known city: Paris",
+      "input": "Paris",
+      "passed": true,
+      "latency_ms": 1,
+      "actual": "The current local time in Paris is 2026-05-21 23:52:44 (Europe/Paris)."
+    },
+    {
+      "id": 110,
+      "description": "[getCurrentTime] Known city: Singapore",
+      "input": "Singapore",
+      "passed": true,
+      "latency_ms": 1,
+      "actual": "The current local time in Singapore is 2026-05-22 05:52:44 (Asia/Singapore)."
+    },
+    {
+      "id": 111,
+      "description": "[getCurrentTime] Empty string returns error",
+      "input": "",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "Error: location is required."
+    },
+    {
+      "id": 112,
+      "description": "[getCurrentTime] Whitespace-only returns error",
+      "input": "   ",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "Error: location is required."
+    },
+    {
+      "id": 113,
+      "description": "[getCurrentTime] Unknown city returns not-found error",
+      "input": "Zxqpqrstuvwxyz",
+      "passed": true,
+      "latency_ms": 1,
+      "actual": "Error: location \"Zxqpqrstuvwxyz\" was not found."
+    },
+    {
+      "id": 114,
+      "description": "[getCurrentTime] Result contains 'The current local time'",
+      "input": "Moscow",
+      "passed": true,
+      "latency_ms": 1,
+      "actual": "The current local time in Moscow is 2026-05-22 00:52:44 (Europe/Moscow)."
+    },
+    {
+      "id": 115,
+      "description": "[getCurrentTime] Result contains timezone format YYYY-MM-DD",
+      "input": "Toronto",
+      "passed": true,
+      "latency_ms": 1,
+      "actual": "The current local time in Toronto is 2026-05-21 17:52:44 (America/Toronto)."
+    },
+    {
+      "id": 201,
+      "description": "[getMyPosition] Valid integer position",
+      "input": "{\"x\":3,\"y\":4}",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "My position is (3, 4)"
+    },
+    {
+      "id": 202,
+      "description": "[getMyPosition] Position at origin",
+      "input": "{\"x\":0,\"y\":0}",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "My position is (0, 0)"
+    },
+    {
+      "id": 203,
+      "description": "[getMyPosition] Large coordinates",
+      "input": "{\"x\":100,\"y\":200}",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "My position is (100, 200)"
+    },
+    {
+      "id": 204,
+      "description": "[getMyPosition] Null x returns error",
+      "input": "{\"x\":null,\"y\":5}",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "Error: agent position is not available."
+    },
+    {
+      "id": 205,
+      "description": "[getMyPosition] Null y returns error",
+      "input": "{\"x\":3,\"y\":null}",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "Error: agent position is not available."
+    },
+    {
+      "id": 206,
+      "description": "[getMyPosition] Both null returns error",
+      "input": "{\"x\":null,\"y\":null}",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "Error: agent position is not available."
+    },
+    {
+      "id": 207,
+      "description": "[getMyPosition] Single digit coordinates",
+      "input": "{\"x\":1,\"y\":9}",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "My position is (1, 9)"
+    },
+    {
+      "id": 208,
+      "description": "[getMyPosition] Boundary coordinate x=0",
+      "input": "{\"x\":0,\"y\":10}",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "My position is (0, 10)"
+    },
+    {
+      "id": 209,
+      "description": "[getMyPosition] Asymmetric large values",
+      "input": "{\"x\":99,\"y\":1}",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "My position is (99, 1)"
+    },
+    {
+      "id": 210,
+      "description": "[getMyPosition] Coordinates mid-grid",
+      "input": "{\"x\":5,\"y\":5}",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "My position is (5, 5)"
+    }
+  ]
+}

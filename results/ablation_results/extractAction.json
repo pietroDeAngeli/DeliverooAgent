@@ -1,0 +1,211 @@
+{
+  "category": "extractAction",
+  "timestamp": "2026-05-21T21-54-40",
+  "total": 25,
+  "passed": 25,
+  "failed": 0,
+  "accuracy_pct": 100,
+  "avg_latency_ms": 0,
+  "tests": [
+    {
+      "id": 1,
+      "description": "Exact action: calculate",
+      "input": "calculate",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "calculate"
+    },
+    {
+      "id": 2,
+      "description": "Exact action: get_current_time",
+      "input": "get_current_time",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "get_current_time"
+    },
+    {
+      "id": 3,
+      "description": "Exact action: get_my_position",
+      "input": "get_my_position",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "get_my_position"
+    },
+    {
+      "id": 4,
+      "description": "Exact action: generate_desire",
+      "input": "generate_desire",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "generate_desire"
+    },
+    {
+      "id": 5,
+      "description": "Exact action: common_knowledge",
+      "input": "common_knowledge",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "common_knowledge"
+    },
+    {
+      "id": 6,
+      "description": "Exact action: generate_delivery_constraint",
+      "input": "generate_delivery_constraint",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "generate_delivery_constraint"
+    },
+    {
+      "id": 7,
+      "description": "Uppercase CALCULATE is lowercased and matches",
+      "input": "CALCULATE",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "calculate"
+    },
+    {
+      "id": 8,
+      "description": "Mixed case GET_CURRENT_TIME matches after lowercase",
+      "input": "GET_CURRENT_TIME",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "get_current_time"
+    },
+    {
+      "id": 9,
+      "description": "Mixed case Generate_Desire matches after lowercase",
+      "input": "Generate_Desire",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "generate_desire"
+    },
+    {
+      "id": 10,
+      "description": "Mixed case Common_Knowledge matches",
+      "input": "Common_Knowledge",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "common_knowledge"
+    },
+    {
+      "id": 11,
+      "description": "Leading/trailing whitespace is trimmed, then matches",
+      "input": "  calculate  ",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "calculate"
+    },
+    {
+      "id": 12,
+      "description": "Whitespace around get_my_position",
+      "input": " get_my_position ",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "get_my_position"
+    },
+    {
+      "id": 13,
+      "description": "Invalid: partial match 'calc' is not an action",
+      "input": "calc",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "Error, no valid action found."
+    },
+    {
+      "id": 14,
+      "description": "Invalid: extra word appended",
+      "input": "calculate now",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "Error, no valid action found."
+    },
+    {
+      "id": 15,
+      "description": "Invalid: empty string",
+      "input": "",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "Error, no valid action found."
+    },
+    {
+      "id": 16,
+      "description": "Invalid: only whitespace",
+      "input": "   ",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "Error, no valid action found."
+    },
+    {
+      "id": 17,
+      "description": "Invalid: random word",
+      "input": "fly",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "Error, no valid action found."
+    },
+    {
+      "id": 18,
+      "description": "Invalid: number string",
+      "input": "123",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "Error, no valid action found."
+    },
+    {
+      "id": 19,
+      "description": "Invalid: partial delivery without suffix",
+      "input": "generate_delivery",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "Error, no valid action found."
+    },
+    {
+      "id": 20,
+      "description": "Invalid: action with special characters",
+      "input": "calculate()",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "Error, no valid action found."
+    },
+    {
+      "id": 21,
+      "description": "Invalid: 'desire' without prefix",
+      "input": "desire",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "Error, no valid action found."
+    },
+    {
+      "id": 22,
+      "description": "Invalid: 'position' alone",
+      "input": "position",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "Error, no valid action found."
+    },
+    {
+      "id": 23,
+      "description": "Invalid: action with dash instead of underscore",
+      "input": "get-current-time",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "Error, no valid action found."
+    },
+    {
+      "id": 24,
+      "description": "Invalid: sentence containing a valid action word",
+      "input": "please calculate for me",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "Error, no valid action found."
+    },
+    {
+      "id": 25,
+      "description": "All caps GENERATE_DELIVERY_CONSTRAINT",
+      "input": "GENERATE_DELIVERY_CONSTRAINT",
+      "passed": true,
+      "latency_ms": 0,
+      "actual": "generate_delivery_constraint"
+    }
+  ]
+}
