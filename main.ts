@@ -7,9 +7,16 @@ import { Desire, generateDesires } from "./BDI/Desire.ts";
 import { reviseIntention } from "./BDI/Intentions.ts";
 import * as utils from "./utils.ts";
 import { getPddlPath } from "./pddl_planner.ts";
-import { LLMClient } from "./LLM/llm.ts";
+import type { LLMClient } from "./LLM/llm.ts";
 
 dotenv.config();
+
+const USE_PDDL           = process.env.USE_PDDL === 'true';
+const USE_LLM_ARG        = process.argv.includes('--use-llm');
+const USE_LLM_EFFECTIVE  = USE_LLM_ARG || process.env.USE_LLM === 'true';
+
+console.log(`[Planner] ${USE_PDDL ? 'PDDL local (Fast Downward)' : 'BFS (default)'}`);
+console.log(`[LLM]     ${USE_LLM_EFFECTIVE ? 'enabled' : 'disabled'}`);
 
 const socket = DjsConnect(process.env.HOST as string, process.env.TOKEN as string);
 
@@ -37,22 +44,16 @@ let bdiTick          = 0;
 
 const STUCK_THRESHOLD    = 3;
 const INTENTION_BLOCK_MS = 8_000;
-const USE_PDDL           = process.env.USE_PDDL === 'true';
-const USE_LLM_ARG        = process.argv.includes('--use-llm');
-
-console.log(`[Planner] ${USE_PDDL ? 'PDDL local (Fast Downward)' : 'BFS (default)'}`);
-console.log(`[LLM]     ${(USE_LLM_ARG || process.env.USE_LLM === 'true') ? 'enabled' : 'disabled'}`);
 // ── LLM state ─────────────────────────────────────────────────────────────────
 // This is basically the belief state for the LLM
 
 const godID = "";
 const godName = "";
-let useLLM = USE_LLM_ARG || process.env.USE_LLM === 'true';
-let llm = new LLMClient();
-let llmDesires: Desire[] = [];
+let useLLM = USE_LLM_EFFECTIVE;
+let llm: LLMClient | null = null;
 let llmBlockedTiles: Set<string> = new Set();
-let llmDeliveryCarryMultiplier: Map<number, number> = new Map();
-let llmGoToTile: Desire[] = []; // prevedo loop infinito
+const llmPendingMissions: Desire[] = [];
+let llmActiveMission: Desire | null = null;
 // TODO: drop in <dir>most tile to get X points not implemented
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -61,6 +62,37 @@ function clearIntention(): void {
     currentIntention = null;
     lastIntention    = null;
     currentPath      = null;
+}
+
+function sameMission(a: Desire | null, b: Desire | null): boolean {
+    return !!a && !!b &&
+        a.type === b.type &&
+        a.x_target === b.x_target &&
+        a.y_target === b.y_target;
+}
+
+function missionKey(mission: Desire): string {
+    return `${mission.type}:${mission.x_target},${mission.y_target}`;
+}
+
+function completeActiveMission(reason: string): void {
+    if (!llmActiveMission) return;
+    console.log(`[LLM] Atomic mission completed (${reason}): ${missionKey(llmActiveMission)}`);
+    llmActiveMission = null;
+}
+
+// Eagerly initialize the LLM client in the background so libraries are
+// already loaded by the time the first chat message arrives.
+if (USE_LLM_EFFECTIVE) {
+    (async () => {
+        try {
+            const { LLMClient: LC } = await import("./LLM/llm.ts");
+            llm = await LC.create();
+            console.log("[LLM] Client ready");
+        } catch (err) {
+            console.error("[LLM] init failed:", err instanceof Error ? err.message : err);
+        }
+    })();
 }
 
 function findDirectionalDeliveryTile(direction: string): { x: number; y: number } | null {
@@ -134,7 +166,12 @@ async function resilientMove(direction: string, nextPos: Position): Promise<Posi
         currentPath = null;
         return null;
     }
-    const result = await socket.emitMove(direction);
+    let result: { x: number; y: number } | null | false = null;
+    try {
+        result = await socket.emitMove(direction);
+    } catch {
+        // emitMove timed out (server didn't ack within 1s) — treat as failed move
+    }
     if (result) {
         console.log(`Moved ${direction} to (${result.x},${result.y})`);
         return { x: result.x, y: result.y };
@@ -195,13 +232,13 @@ socket.onSensing((sensing: any) => {
     worldMap.update_crates(sensing.crates);
     worldMap.update_agents(sensing.agents);
 
-    // Drop carried parcels that expired or were stolen
+    // Drop carried parcels that expired or were stolen or are visibly on the ground
     const sensingMap = new Map<string, any>(sensing.parcels.map((p: any) => [p.id, p]));
     carrying = carrying.filter(c => {
         const sp = sensingMap.get(c.id);
         if (!sp) return true;                                            // off-map: still carrying
         if (sp.reward <= 0) return false;                               // expired
-        if (sp.carriedBy && sp.carriedBy !== myAgent!.id) return false; // stolen
+        if (sp.carriedBy !== myAgent!.id) return false;                 // on ground or stolen
         return true;
     });
 
@@ -230,30 +267,46 @@ socket.onSensing((sensing: any) => {
 });
 
 socket.onMsg( async (id: string, name: string, msg: any, reply: ((response: any) => void) | undefined) => {
-    if (useLLM && name === godName && id === godID) {
-        console.log("new msg received: ", msg);
+    if (true || useLLM && name === godName && id === godID) {
+        if (!llm) { console.log("[LLM] client not ready yet, skipping message"); return; }
 
-        const result = await llm.processMessage(msg, myAgent ? { x: myAgent.pos.x, y: myAgent.pos.y } : null);
+        console.log(`[LLM] msg from ${name}(${id}): "${msg}"`);
 
-        // Apply desire updates from LLM
-        for (const tile of result.updates.goToTiles) {
-            llmGoToTile.push(new Desire("go_to", tile.x, tile.y, tile.utility));
-        }
-        for (const tileKey of result.updates.blockedTiles) {
-            llmBlockedTiles.add(tileKey);
-        }
-        for (const constraint of result.updates.deliveryConstraints) {
-            const tile = findDirectionalDeliveryTile(constraint.direction);
-            if (!tile) continue;
-            if (constraint.points < 0) {
-                llmBlockedTiles.add(`${tile.x},${tile.y}`);
-            } else {
-                llmGoToTile.push(new Desire("go_delivery", tile.x, tile.y, constraint.points));
+        try {
+            const result = await llm.processMessage(msg, myAgent ? { x: myAgent.pos.x, y: myAgent.pos.y } : null);
+
+            console.log(`[LLM] reply: "${result.reply || "(none)"}"`);
+
+            // Apply desire updates from LLM
+            for (const tile of result.updates.goToTiles) {
+                console.log(`[LLM] new go_to mission: (${tile.x},${tile.y}) u=${tile.utility}`);
+                llmPendingMissions.push(new Desire("go_to", tile.x, tile.y, tile.utility));
             }
-        }
+            for (const tileKey of result.updates.blockedTiles) {
+                console.log(`[LLM] blocking tile: ${tileKey}`);
+                llmBlockedTiles.add(tileKey);
+            }
+            for (const constraint of result.updates.deliveryConstraints) {
+                const tile = findDirectionalDeliveryTile(constraint.direction);
+                if (!tile) { console.log(`[LLM] delivery constraint: tile ${constraint.direction} not found`); continue; }
+                if (constraint.points < 0) {
+                    console.log(`[LLM] blocking delivery tile (${tile.x},${tile.y}) dir=${constraint.direction}`);
+                    llmBlockedTiles.add(`${tile.x},${tile.y}`);
+                } else {
+                    console.log(`[LLM] new go_delivery mission: (${tile.x},${tile.y}) dir=${constraint.direction} pts=${constraint.points}`);
+                    llmPendingMissions.push(new Desire("go_delivery", tile.x, tile.y, constraint.points));
+                }
+            }
 
-        if (result.reply && reply) {
-            reply(result.reply);
+            if (result.reply) {
+                if (reply) {
+                    reply(result.reply);         // emitAsk: risposta diretta al mittente
+                } else {
+                    socket.emitShout(result.reply); // emitSay: broadcast in chat
+                }
+            }
+        } catch (err) {
+            console.error("[LLM] processMessage error (agent continues):", err instanceof Error ? err.message : err);
         }
     }
 });
@@ -276,9 +329,26 @@ async function bdiStep(): Promise<void> {
             if (res) {
                 console.log(`[Priority] Delivered ${carrying.length} parcel(s) at (${myAgent.pos.x},${myAgent.pos.y})`);
                 carrying.length = 0;
+                if (llmActiveMission && llmActiveMission.type === 'go_delivery' &&
+                    llmActiveMission.x_target === myAgent.pos.x && llmActiveMission.y_target === myAgent.pos.y) {
+                    completeActiveMission('priority-delivery');
+                }
                 clearIntention();
             }
             return;
+        }
+
+        // Activate exactly one LLM mission at a time; each mission is consumed once.
+        if (!llmActiveMission && llmPendingMissions.length > 0) {
+            llmActiveMission = llmPendingMissions.shift() ?? null;
+            if (llmActiveMission) {
+                console.log(`[LLM] Atomic mission activated: ${missionKey(llmActiveMission)}`);
+            }
+        }
+        if (llmActiveMission && !sameMission(currentIntention, llmActiveMission)) {
+            currentIntention = llmActiveMission;
+            currentPath      = null;
+            lastIntention    = null;
         }
 
         // ── Desire generation ─────────────────────────────────────────────────
@@ -294,21 +364,31 @@ async function bdiStep(): Promise<void> {
             }
         }
         
-        let desires = generateDesires(myAgent, worldMap, carrying, spawnVisitLog, activeBlocked, llmGoToTile);
+        let desires = generateDesires(myAgent, worldMap, carrying, spawnVisitLog, activeBlocked, []);
 
 
         // ── Intention revision ────────────────────────────────────────────────
         const prevIntention  = currentIntention;
-        currentIntention     = reviseIntention(currentIntention, desires, worldMap, carrying, stepsSinceSwitch);
-        const switched =
-            !currentIntention || !prevIntention ||
-            currentIntention.type      !== prevIntention.type ||
-            currentIntention.x_target  !== prevIntention.x_target ||
-            currentIntention.y_target  !== prevIntention.y_target;
+        let switched = false;
+        if (llmActiveMission) {
+            currentIntention = llmActiveMission;
+            switched =
+                !prevIntention ||
+                currentIntention.type      !== prevIntention.type ||
+                currentIntention.x_target  !== prevIntention.x_target ||
+                currentIntention.y_target  !== prevIntention.y_target;
+        } else {
+            currentIntention = reviseIntention(currentIntention, desires, worldMap, carrying, stepsSinceSwitch);
+            switched =
+                !currentIntention || !prevIntention ||
+                currentIntention.type      !== prevIntention.type ||
+                currentIntention.x_target  !== prevIntention.x_target ||
+                currentIntention.y_target  !== prevIntention.y_target;
+        }
         stepsSinceSwitch = switched ? 0 : stepsSinceSwitch + 1;
 
         // Refresh stored utility with current tick value
-        if (currentIntention) {
+        if (currentIntention && !sameMission(currentIntention, llmActiveMission)) {
             const match = desires.find(d =>
                 d.type     === currentIntention!.type &&
                 d.x_target === currentIntention!.x_target &&
@@ -319,7 +399,7 @@ async function bdiStep(): Promise<void> {
 
         // If go_pickup/go_delivery target vanished from desires (parcel expired/stolen),
         // clear immediately rather than walking toward a ghost.
-        if (currentIntention && currentIntention.type !== 'explore') {
+        if (currentIntention && currentIntention.type !== 'explore' && !sameMission(currentIntention, llmActiveMission)) {
             const stillValid = desires.some(d =>
                 d.type     === currentIntention!.type &&
                 d.x_target === currentIntention!.x_target &&
@@ -337,9 +417,15 @@ async function bdiStep(): Promise<void> {
         for (const [k, u] of blockedIntentions) if (u <= now) blockedIntentions.delete(k);
         const intentionKey = `${currentIntention.type}:${currentIntention.x_target},${currentIntention.y_target}`;
         if (blockedIntentions.has(intentionKey)) {
-            const fallback = desires.find(d => !blockedIntentions.has(`${d.type}:${d.x_target},${d.y_target}`));
-            currentIntention = fallback ?? null;
-            if (!currentIntention) lastIntention = null;
+            if (sameMission(currentIntention, llmActiveMission)) {
+                console.log(`[LLM] Atomic mission blocked: ${intentionKey}`);
+                completeActiveMission('blocked');
+                clearIntention();
+            } else {
+                const fallback = desires.find(d => !blockedIntentions.has(`${d.type}:${d.x_target},${d.y_target}`));
+                currentIntention = fallback ?? null;
+                if (!currentIntention) lastIntention = null;
+            }
         }
 
         if (!currentIntention) {
@@ -386,7 +472,7 @@ async function bdiStep(): Promise<void> {
                          !p.carriedBy,
                 );
                 const res = await socket.emitPickup();
-                if (res !== false) {
+                if (res) {
                     for (const p of toPickup)
                         if (!carrying.some(c => c.id === p.id)) carrying.push(p);
                     console.log(toPickup.length > 0
@@ -420,10 +506,7 @@ async function bdiStep(): Promise<void> {
                 if (res) {
                     console.log(`Delivered at (${myAgent.pos.x},${myAgent.pos.y})`); 
                     carrying.length = 0;
-                    // Remove any LLM-injected go_delivery desire for this tile
-                    llmGoToTile = llmGoToTile.filter(d =>
-                        !(d.type === 'go_delivery' && d.x_target === currentIntention!.x_target && d.y_target === currentIntention!.y_target)
-                    );
+                    if (sameMission(currentIntention, llmActiveMission)) completeActiveMission('reached-target');
                 }
                 clearIntention();
                 return;
@@ -431,7 +514,9 @@ async function bdiStep(): Promise<void> {
             if (!currentPath?.length)
                 currentPath = await planPath(myAgent.pos, { x: currentIntention.x_target, y: currentIntention.y_target });
             if (!currentPath?.length) {
+                const failed = currentIntention;
                 handleNoPath(`go_delivery:${currentIntention.x_target},${currentIntention.y_target}`, 'delivery');
+                if (sameMission(failed, llmActiveMission)) completeActiveMission('no-path');
                 return;
             }
             await stepTowards(currentPath[0], utils.nextPosition(myAgent.pos, currentPath[0]));
@@ -457,16 +542,16 @@ async function bdiStep(): Promise<void> {
         } else if (currentIntention.type === 'go_to') {
             if (myAgent.pos.x === currentIntention.x_target && myAgent.pos.y === currentIntention.y_target) {
                 console.log(`[go_to] Reached (${currentIntention.x_target},${currentIntention.y_target}), removing desire`);
-                llmGoToTile = llmGoToTile.filter(d =>
-                    d.x_target !== currentIntention!.x_target || d.y_target !== currentIntention!.y_target
-                );
+                if (sameMission(currentIntention, llmActiveMission)) completeActiveMission('reached-target');
                 clearIntention();
                 return;
             }
             if (!currentPath?.length)
                 currentPath = await planPath(myAgent.pos, { x: currentIntention.x_target, y: currentIntention.y_target });
             if (!currentPath?.length) {
+                const failed = currentIntention;
                 handleNoPath(`go_to:${currentIntention.x_target},${currentIntention.y_target}`, `(${currentIntention.x_target},${currentIntention.y_target})`);
+                if (sameMission(failed, llmActiveMission)) completeActiveMission('no-path');
                 return;
             }
             await stepTowards(currentPath[0], utils.nextPosition(myAgent.pos, currentPath[0]));
@@ -494,6 +579,9 @@ async function bdiStep(): Promise<void> {
                     blockedIntentions.set(prevKey, Date.now() + INTENTION_BLOCK_MS);
                     intentionStuckTicks.delete(prevKey);
                     console.log(`[Stuck] No progress: blocking "${prevKey}" for ${INTENTION_BLOCK_MS / 1000}s`);
+                    if (llmActiveMission && prevKey === missionKey(llmActiveMission)) {
+                        completeActiveMission('stuck');
+                    }
                     clearIntention();
                 }
             }

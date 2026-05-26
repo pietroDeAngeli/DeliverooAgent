@@ -30,6 +30,11 @@ export class LLMClient {
         });
     }
 
+    /** Async factory: returns a ready-to-use client. */
+    static async create(): Promise<LLMClient> {
+        return new LLMClient();
+    }
+
     private messages = [
         {
             role: "system",
@@ -43,18 +48,23 @@ export class LLMClient {
         return text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
     }
 
-    private async callModel(messages: any, { temperature = 0 } = {}) {
+    private async callModel(messages: any, { temperature = 0, timeoutMs = 20_000 } = {}) {
         if (!MODEL) {
             throw new Error("LOCAL_MODEL not set in .env");
         }
-        
-        const response = await this.client.chat.completions.create({
-            model: MODEL,
-            messages,
-            temperature,
-        });
 
-        return response.choices?.[0]?.message?.content ?? "";
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+        try {
+            const response = await this.client.chat.completions.create(
+                { model: MODEL, messages, temperature },
+                { signal: controller.signal },
+            );
+            return response.choices?.[0]?.message?.content ?? "";
+        } finally {
+            clearTimeout(timer);
+        }
     }
 
     // ---- Output parsing ----
@@ -84,11 +94,14 @@ export class LLMClient {
         }
     }
 
-    private async answerGeneralQuestion(question: string): Promise<string> {
+    private async answerGeneralQuestion(question: string, context = ""): Promise<string> {
         try {
+            const userContent = context
+                ? `Previous answers for context:\n${context}\n\nNew question: ${question}`
+                : question;
             const messages = [
                 { role: "system", content: prompts.GENERAL_QUESTION_PROMPT },
-                { role: "user", content: question },
+                { role: "user", content: userContent },
             ];
             return await this.callModel(messages, { temperature: 0.1 });
         } catch (error) {
@@ -118,10 +131,14 @@ export class LLMClient {
             { role: "user", content: msg },
         ];
         const response = await this.callModel(messages);
+        const stripped = this.stripMarkdown(response);
+        if (!stripped.startsWith("{") && !stripped.startsWith("[")) {
+            return { calculations: [], cleanMessage: msg };
+        }
         try {
-            return JSON.parse(this.stripMarkdown(response));
-        } catch (error) {
-            console.error("Task planner parsing error:", error);
+            return JSON.parse(stripped);
+        } catch {
+            console.warn("[LLM] planTasks: non-JSON response, using fallback");
             return { calculations: [], cleanMessage: msg };
         }
     }
@@ -135,7 +152,7 @@ export class LLMClient {
         try {
             return JSON.parse(this.stripMarkdown(response));
         } catch (error) {
-            console.error("Delivery constraint parsing error:", error);
+            console.warn("[LLM] extractDeliveryConstraint: non-JSON response, skipping");
             return null;
         }
     }
@@ -149,7 +166,7 @@ export class LLMClient {
         try {
             return JSON.parse(this.stripMarkdown(response));
         } catch (error) {
-            console.error("Desire generation parsing error:", error);
+            console.warn("[LLM] generateDesire: non-JSON response, skipping");
             return null;
         }
     }
@@ -204,14 +221,14 @@ export class LLMClient {
 
             if (action === "calculate") {
                 const expr = await this.extractMathExpression(subMsg);
-                replyText += "The result is " + await tools.calculate(expr) + ". ";
+                replyText += await tools.calculate(expr) + " ";
             } else if (action === "get_my_position") {
-                replyText += "My current position is " + await tools.getMyPosition(agent_position) + ". ";
+                replyText += await tools.getMyPosition(agent_position) + " ";
             } else if (action === "get_current_time") {
                 const city = await this.extractCityName(subMsg);
-                replyText += await tools.getCurrentTime(city) + ". ";
+                replyText += await tools.getCurrentTime(city) + " ";
             } else if (action === "common_knowledge") {
-                replyText += await this.answerGeneralQuestion(subMsg) + ". ";
+                replyText += await this.answerGeneralQuestion(subMsg, replyText.trim()) + " ";
             } else if (action === "generate_desire") {
                 const desire = await this.generateDesire(subMsg);
                 if (desire) {

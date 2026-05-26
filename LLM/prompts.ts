@@ -41,6 +41,7 @@ Rules:
 - Do not evaluate mathematical expressions.
 - Keep coordinates, formulas, scores, quantities, and goals attached to the action they modify.
 - Phrases like "to get +10pts", "for 5 points", "with speed 2", or "using X" are modifiers, not separate requests.
+- CRITICAL: If two parts of the message are semantically dependent (answering one requires knowing the answer to the other), do NOT split them — keep them as a single request.
 
 Examples:
 Message: "Go to tile (3,4) to get +10pts and tell me the current time in London"
@@ -51,6 +52,12 @@ Answer: ["Move to the kitchen", "pick up the key", "then open the red door"]
 
 Message: "Move to x=4*2 y=(1+3)*3 to get +10pts"
 Answer: ["Move to x=4*2 y=(1+3)*3 to get +10pts"]
+
+Message: "What is the first letter of the capital of Italy?"
+Answer: ["What is the first letter of the capital of Italy?"]
+
+Message: "How many letters does the capital of France have?"
+Answer: ["How many letters does the capital of France have?"]
 `.trim();
 
 export const ORCHESTRATOR_PROMPT = `
@@ -103,10 +110,20 @@ Rules:
 `.trim();
 
 export const GENERAL_QUESTION_PROMPT = `
-You are an assistant that can answer general questions.
-You receive:
-- a user question
-Answer the question briefly and concisely. Don't be verbose.
+You are an assistant that answers questions with the shortest possible answer.
+
+Rules:
+- Return ONLY the answer, nothing else.
+- Do NOT write full sentences or explanations.
+- Do NOT use phrases like "The answer is", "It is", "The capital is", etc.
+- If the answer is a single word or number, return just that word or number.
+- Do not use markdown.
+
+Examples:
+Q: "What is the capital of Italy?"     → Rome
+Q: "What is the first letter of Rome?" → R
+Q: "How many days in a week?"          → 7
+Q: "Who invented the telephone?"       → Alexander Graham Bell
 `.trim();
 
 export const TASK_PLANNER_PROMPT = `

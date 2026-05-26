@@ -1,32 +1,23 @@
-import cityTimezones from "city-timezones";
+// Safe subset of Math functions exposed to the expression evaluator.
+// All identifiers in the expression are validated against this map before eval.
+const SAFE_MATH: Record<string, (...args: number[]) => number> = {
+    abs:   Math.abs,   sqrt:  Math.sqrt,  cbrt:  Math.cbrt,
+    sin:   Math.sin,   cos:   Math.cos,   tan:   Math.tan,
+    asin:  Math.asin,  acos:  Math.acos,  atan:  Math.atan,
+    log:   Math.log,   log10: Math.log10, exp:   Math.exp,
+    round: Math.round, floor: Math.floor, ceil:  Math.ceil,
+    min:   Math.min,   max:   Math.max,   pow:   Math.pow,
+};
 
-import { create, all } from "mathjs";
+let cityTimezonesModule: any | null = null;
 
-const math = create(all, {});
-
-// Disable high-risk mathjs functions that are not needed for a simple calculator.
-// Note: evaluate/parse are intentionally kept enabled — security is enforced via
-// the character whitelist, identifier whitelist, and blocked-syntax checks below.
-math.import(
-    {
-        import: () => {
-            throw new Error("Function import is disabled");
-        },
-        createUnit: () => {
-            throw new Error("Function createUnit is disabled");
-        },
-        simplify: () => {
-            throw new Error("Function simplify is disabled");
-        },
-        derivative: () => {
-            throw new Error("Function derivative is disabled");
-        },
-        resolve: () => {
-            throw new Error("Function resolve is disabled");
-        },
-    },
-    { override: true }
-);
+async function getCityTimezones() {
+    if (!cityTimezonesModule) {
+        const cityTz = await import("city-timezones");
+        cityTimezonesModule = (cityTz as any).default ?? cityTz;
+    }
+    return cityTimezonesModule;
+}
 
 export function calculate(expression: string): string {
     try {
@@ -57,27 +48,7 @@ export function calculate(expression: string): string {
         }
 
         // Allow only a small set of mathematical functions and constants.
-        const allowedFunctions = new Set([
-            "abs",
-            "sqrt",
-            "cbrt",
-            "sin",
-            "cos",
-            "tan",
-            "asin",
-            "acos",
-            "atan",
-            "log",
-            "log10",
-            "exp",
-            "round",
-            "floor",
-            "ceil",
-            "min",
-            "max",
-            "pow",
-        ]);
-
+        const allowedFunctions = new Set(Object.keys(SAFE_MATH));
         const allowedConstants = new Set(["pi", "e"]);
 
         const identifiers = input.match(/[A-Za-z_][A-Za-z0-9_]*/g) ?? [];
@@ -90,7 +61,20 @@ export function calculate(expression: string): string {
             }
         }
 
-        const result = math.evaluate(input);
+        // Substitute identifiers and ^ before passing to Function().
+        // All identifiers have already been validated — no user input reaches eval directly.
+        const expr = input
+            .replace(/\^/g, "**")
+            .replace(/[A-Za-z_][A-Za-z0-9_]*/g, (m) => {
+                const name = m.toLowerCase();
+                if (allowedFunctions.has(name)) return `__m.${name}`;
+                if (name === "pi") return String(Math.PI);
+                if (name === "e")  return String(Math.E);
+                return m;
+            });
+
+        // eslint-disable-next-line no-new-func
+        const result = new Function("__m", `"use strict"; return (${expr});`)(SAFE_MATH);
 
         if (typeof result !== "number") {
             return "Error: expression did not return a number.";
@@ -108,6 +92,7 @@ export function calculate(expression: string): string {
 
 export async function getCurrentTime(location: string): Promise<string> {
     try {
+        const cityTimezones = await getCityTimezones();
         const normalized = location.trim();
 
         if (!normalized) {
@@ -122,7 +107,7 @@ export async function getCurrentTime(location: string): Promise<string> {
 
         // Prefer the city with the largest population to handle ambiguous names
         // (e.g. "London" should resolve to London, UK, not London, Ontario).
-        const bestMatch = matches.reduce((best, cur) =>
+        const bestMatch = matches.reduce((best: any, cur: any) =>
             (cur.pop ?? 0) > (best.pop ?? 0) ? cur : best
         );
 
