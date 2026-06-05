@@ -1,0 +1,6 @@
+\begin{abstract}
+This report describes the design and implementation of an autonomous agent for the \textbf{Deliveroo.js} game environment, a grid-world simulation in which agents compete to pick up parcels and deliver them to designated drop zones.  The agent follows a \emph{Belief-Desire-Intention} (BDI) architecture written in TypeScript.
+Decisions such as: which parcel to collect, where to deliver, and where to explore---are driven by a utility function that accounts for parcel reward, decay rate, distance heuristics, and competitive pressure from other agents.
+Path-finding is handled by a BFS-based planner that can optionally be upgraded to an optimal PDDL solver.
+A secondary LLM interface allows the agent to interpret natural-language commands, translating them into BDI desires, and to communicate with another agent to cooperate effectively and maximize points.
+\end{abstract}

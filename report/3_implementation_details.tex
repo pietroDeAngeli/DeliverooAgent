@@ -1,0 +1,89 @@
+\subsection{Utility Functions}
+\label{sec:utility_fun}
+
+The utility functions define the heuristics used by the agent to rank candidate
+desires. Each utility combines the expected reward of an action with its travel
+cost and possible risk factors.
+
+\subsubsection{Pick up utility}
+\label{sec:pickup_utility}
+For a \texttt{go\_pickup} desire targeting parcel $p$ at position $\mathbf{q}$,
+the utility is computed as the sum of two terms: the expected value of the
+parcels already carried by the agent and the expected value of the new parcel.
+The final score is then reduced when opponent agents are close to the pickup
+location:
+\vspace{-0.3em}
+\begin{equation}
+u_{\text{pickup}}(p) =
+  \left(
+    V_{\text{carry}}(\mathbf{q}) + V_{\text{parcel}}(p,\mathbf{q})
+  \right)
+  \cdot P_{\text{risk}}(\mathbf{q})
+\label{eq:pickup_utility}
+\end{equation}
+\vspace{-0.5em}
+where
+
+\vspace{-1.5em}
+\begin{equation}
+V_{\text{carry}}(\mathbf{q}) =
+  R_{\text{carry}} - n \cdot \delta \cdot d(\mathbf{a}, \mathbf{q})
+\end{equation}
+\vspace{-1em}
+
+is the estimated remaining value of the $n$ parcels already carried ($R_{\text{carry}}$) when reaching
+the pickup position $\mathbf{q}$ from the current agent position $\mathbf{a}$, penalizing it based on the decay rate $\delta$. This prevents the agent from continuously collecting parcels without ever delivering them, which is especially useful in scenarios characterized by a high abundance of parcels and a low density of competing agents. Then,
+
+
+\begin{equation}
+V_{\text{parcel}}(p,\mathbf{q}) =
+  r_p - \delta \cdot d(\mathbf{q}, \mathbf{d})
+\end{equation}
+\vspace{-1.5em}
+
+is the estimated net value of the new parcel, calculated by subtracting the expected decay incurred during the transit from its position $\mathbf{q}$ to the nearest delivery tile $\mathbf{d}$ from its base reward $r_p$. The final term, $P_{\text{risk}}(\mathbf{q})$, represents an environmental safety coefficient bounded between $0$ and $1$ that penalizes the target's utility based on the proximity of threats modeling the operational risk of the parcel being intercepted or stolen before the agent can reach the coordinates $\mathbf{q}$.
+
+% ----------
+\subsubsection{Delivery utility}
+\label{sec:delivery_utility}
+For a \texttt{go\_delivery} desire targeting delivery tile $\mathbf{d}$, the
+utility estimates the remaining value of the currently carried parcels after
+the trip:
+
+\vspace{-1em}
+\begin{equation}
+u_{\text{delivery}}(\mathbf{d}) =
+  (R_{\text{carry}} - n \cdot \delta \cdot d(\mathbf{a}, \mathbf{d})) \cdot P_{\text{risk}}(\mathbf{d})
+\label{eq:delivery_utility}
+\end{equation}
+\vspace{-1em}
+
+where $R_{\text{carry}}$ is the current reward of the carried items, which decays at a rate of $\delta$ for each of the $n$ parcels over the distance $d(\mathbf{a}, \mathbf{d})$ from the agent's position $\mathbf{a}$ to the delivery tile. 
+
+The penalty term $P_{\text{risk}}(\mathbf{d})$ handles stationary threats. The agent targets the three closest hazard-free delivery tiles ($P_{\text{risk}} = 1$). If all available delivery positions are blocked by stationary enemies, the agent falls back to these targets but scales their utility by $P_{\text{risk}} = 0.1$ to penalize the high-risk action.
+
+% ----
+\subsubsection{Explore utility}
+\label{sec:explore_utility}
+For an \texttt{explore} desire targeting tile $s$, the utility rewards tiles that have not been visited recently, balanced against the distance required to reach them:
+
+\vspace{-1em}
+\begin{equation}
+u_{\text{explore}}(s) =
+  \frac{T_{\text{unvisited}}(s)}{d(\mathbf{a},s) + 1} - C_{\text{travel}}(s)
+\label{eq:explore_utility}
+\end{equation}
+\vspace{-1em}
+
+where $T_{\text{unvisited}}(s)$ represents the time elapsed since the tile $s$ was last visited, and $C_{\text{travel}}(s) = K_{\text{penalize}} \cdot \delta \cdot d(\mathbf{a},s)$ defines the travel cost, heavily penalizing distant targets based on a tuning constant $K_{\text{penalize}}$ and the map decay rate $\delta$. This score is further adjusted by environmental multipliers to favor high-density parcel spawns while avoiding areas with high opponent pressure.
+
+\subsection{Main Strategies}
+
+\paragraph{Stuck and bounce recovery.}
+The agent implements two deterministic recovery mechanisms to prevent deadlocks and repetitive, ineffective behaviors. First, if the pathfinder fails to compute a valid route for the same intention across \texttt{STUCK\_THRESHOLD} consecutive reasoning cycles, the target intention is temporarily blacklisted for \texttt{INTENTION\_BLOCK\_MS}, forcing the agent to switch to an alternative candidate desire. Second, the agent monitors its recent coordinate history to detect cyclic oscillations, such as $A \to B \to A \to B$ patterns. When such a bounce loop is identified, the involved cells are temporarily blocked, the current path is discarded, and a new route is forced.
+
+\paragraph{Collision avoidance.}
+To ensure smooth navigation, the agent proactively predicts potential collisions by estimating the immediate future position of nearby opponents based on their last observed moving direction. If the agent's next planned step coincides with a predicted opponent position, the current path is cleared and immediately recomputed to avoid a confrontation. Furthermore, opponents that remain stationary across multiple consecutive sensing updates are dynamically registered as static obstacles within the pathfinding grid, allowing the agent to route around them efficiently.
+
+\subsection{Communication Mechanisms}
+\TODO{missing}

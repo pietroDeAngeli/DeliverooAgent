@@ -1,0 +1,59 @@
+\documentclass[12pt, a4paper]{article}
+
+% ── Packages ──────────────────────────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+\usepackage{hyperref}
+\hypersetup{colorlinks=true, linkcolor=blue, urlcolor=blue, citecolor=blue}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{parskip}
+\usepackage{microtype}
+\usepackage{float}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+% ── TODO commands
+\newcommand{\TODO}[1]{\textcolor{red}{\textbf{TODO:} #1}}
+\newcommand{\rev}[1]{\textcolor{red}{#1}}
+
+% ── Title ─────────────────────────────────────────────────────────────────────
+\title{
+  \vspace{-1cm}
+  \textbf{Autonomous Agents for the Deliveroo.js Environment}\\[0.4em]
+  \large Autonomous Software Agents - Final Project Report\\
+  University of Trento,
+  \vspace{-3ex}
+}
+
+\author{Riderless}
+\date{\vspace{-3ex}}
+% ──────────────────────────────────────────────────────────────────────────────
+\begin{document}
+
+\maketitle
+
+
+\input{0_abstract}
+
+\input{1_intro}
+\input{2_architecture}
+\input{3_implementation_details}
+\input{4_experiments}
+\input{5_results}
+\input{6_limitations}
+\input{7_conclusion}
+
+\end{document}

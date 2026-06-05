@@ -1,0 +1,12 @@
+\section{Introduction}
+
+\subsection{Context and Motivation}
+Deliveroo.js is a browser-based, multi-agent grid world developed at the University of Trento for the Autonomous Software Agents course. Agents connect to a server over a WebSocket API, receive perceptual updates (parcels, tiles, other agents), and must act continuously to maximize their score. Additionally, the agent can process textual instructions to earn extra points, balancing these requests with its primary tasks whenever possible. This setup provides an ideal testbed to explore how symbolic planning (PDDL) and LLM-based reasoning can complement a classical BDI loop.
+
+\subsection{Project Goals}
+\begin{enumerate}[leftmargin=*, label=\arabic*.]
+  \item \textbf{BDI Agent Architecture (Challenge 1):} Design and implement a deliberative agent capable of sensing the environment, dynamically revising beliefs, and managing intentions to collect and deliver parcels efficiently.
+  \item \textbf{Symbolic Planning Integration:} Integrate an asynchronous PDDL planner to support optimal path-finding and navigate complex grid topologies.
+  \item \textbf{LLM Natural-Language Interface (Challenge 2):} Develop an LLM pipeline to handle atomic operator requests, dynamically adapt individual game strategies, and parse complex operational constraints.
+  \item \textbf{Multi-Agent Coordination:} Implement a collaborative strategy allowing the LLM-enhanced agent, the core BDI agent, and the external mission-agent to communicate, exchange environment data, and coordinate actions toward shared goals.
+\end{enumerate}

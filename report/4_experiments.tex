@@ -1,0 +1,17 @@
+\section{Experimental Setup}
+\label{sec:setup}
+
+\subsection{Scenarios}
+The agent architecture was evaluated across two main configurations based on the challenge scenarios, specifically designed to test planning efficiency and multi-agent coordination:
+
+\begin{itemize}
+    \item \textbf{Single-Agent Benchmarking:} Evaluated on the \textbf{first challenge} scenario to isolate and compare planning performance. This setup contrasts the default configuration using Breadth-First Search (BFS) against the proposed PDDL planner. 
+    \item \textbf{Multi-Agent Coordination:} Evaluated on the \textbf{second challenge} scenario to analyze team dynamics. This setup compares a baseline deployment operating without communication against a cooperative team of two agents, where both utilize PDDL planning but their architectures differ: one agent operates solely via BDI, while the other is enhanced with BDI and LLM integration.
+\end{itemize}
+
+To measure the performance and efficiency of each configuration, we consider the \textbf{net score} ($R_{\text{net}} = \text{reward} - \text{penalties}$) accumulated by the agents at the end of each map, following a 5-minute run per map.
+
+\subsection{LLM Component Evaluation Setup}
+The LLM component is evaluated in isolation via a dedicated test suite (\texttt{tests/llm\_tests.ts}), with test cases stored as JSON files under \texttt{tests/data/}. Rather than evaluating the system as a monolithic block, the suite isolates individual pipeline stages across 203 total test cases to enable a fine-grained diagnosis of failure modes. 
+
+Specifically, the dataset includes deterministic validation for the tool handlers (\texttt{tools}, 53 cases) alongside targeted natural language processing tasks (25 cases each). These tasks assess request decomposition (\texttt{splitMessage}), entity extraction (\texttt{extractCityName}), math expression isolation (\texttt{extractMathExpression}), structured JSON constraints parsing (\texttt{extractDeliveryConstraint}), and orchestrator action classification (\texttt{decideNextAction}). Ground-truth verification is performed using exact string matching for classifications and specialized JSON structural validation for complex constraints.

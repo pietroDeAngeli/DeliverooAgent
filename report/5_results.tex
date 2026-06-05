@@ -1,0 +1,54 @@
+\section{Results}
+\label{sec:results}
+
+Table \ref{tab:single_agent_benchmark} reports the results on the single agent scenario comparing the \textbf{net score} of BFS planning with PDDL using $A^*$ to find the shortest path to reach a tile.
+
+\begin{table}[h]
+\centering
+\setlength{\tabcolsep}{12pt} % Aumenta lo spazio orizzontale tra le colonne
+\caption{Single-agent performance BFS vs PDDL with average net scores.}
+\label{tab:single_agent_benchmark}
+\begin{tabular}{lrr}
+\hline
+\textbf{Map} & \textbf{BFS} & \textbf{PDDL} \\ \hline
+26c1\_1 & 1416 & 1310 \\
+26c1\_2 & 1630 & 1582 \\
+26c1\_3 & 894  & 959  \\
+26c1\_4 & 1463 & 1443 \\
+26c1\_5 & 681  & 782  \\
+26c1\_6 & 2063 & 2364 \\
+26c1\_7 & 1766 & 1794 \\
+26c1\_8 & 1949 & 2044 \\ \hline
+\textbf{Average} & \textbf{1482.75} & \textbf{1534.75} \\ \hline
+\end{tabular}
+\end{table}
+
+The performance variations depend strictly on the structural characteristics of each map. BFS achieves higher net scores on maps that are less constrained and well-connected, where sub-millisecond execution allows the agent to react instantly to fast environmental updates. Conversely, on more complex maps (e.g., \texttt{26c1\_3} and \texttt{26c1\_5} through \texttt{26c1\_8}), the strategic value of optimal action sequences computed by the PDDL planner successfully offsets its call overhead. This structural advantage is reflected in the overall performance, with the PDDL pipeline achieving a higher average net score of $1534.75$ compared to the $1482.75$ baseline.
+
+
+
+\TODO{Add results challenge 2}
+
+\subsection{LLM Components Evaluation Results}
+\label{sec:llm_results}
+Table~\ref{tab:llm_pipeline_eval} reports a component-level evaluation of the LLM pipeline, measuring the performance and average latency of each processing stage. Given the focus on architectural validation, the metrics were collected on a small, controlled test set. While the high success rate across components demonstrates the effectiveness of the targeted prompts, these figures serve primarily to contextualize execution latency and structural robustness rather than to claim absolute generalization over larger, unconstrained datasets.
+
+\begin{table}[H]
+  \centering
+  \caption{Component-level evaluation of the LLM pipeline.}
+  \label{tab:llm_pipeline_eval}
+  \begin{tabular}{lrrr}
+    \toprule
+    \textbf{Category} & \textbf{Total} & \textbf{Passed} & \textbf{Avg.\ latency (ms)} \\
+    \midrule
+    \texttt{tools}                    & 50 & 50 &   2 \\
+    \texttt{splitMessage}             & 25 & 25 & 764 \\
+    \texttt{extractCityName}          & 25 & 25 & 282 \\
+    \texttt{extractMathExpression}    & 25 & 24 & 372 \\
+    \texttt{extractDeliveryConstraint}& 25 & 25 & 667 \\
+    \texttt{decideNextAction}         & 25 & 25 & 323 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\TODO{Add other tests for tasks 2 and 3}
