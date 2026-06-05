@@ -488,16 +488,7 @@ async function bdiStep(): Promise<void> {
                 handleNoPath(`go_pickup:${currentIntention.x_target},${currentIntention.y_target}`, 'parcel');
                 return;
             }
-            const moved = await stepTowards(currentPath[0], utils.nextPosition(myAgent.pos, currentPath[0]));
-            // Opportunistic delivery while en-route to pickup
-            if (moved && carrying.length > 0 && utils.tile_is('delivery', myAgent.pos, worldMap.tiles)) {
-                const res = await socket.emitPutdown();
-                if (res) {
-                    console.log(`Opportunistic delivery at (${myAgent.pos.x},${myAgent.pos.y})`);
-                    carrying.length = 0;
-                    clearIntention();
-                }
-            }
+            await stepTowards(currentPath[0], utils.nextPosition(myAgent.pos, currentPath[0]));
 
         } else if (currentIntention.type === 'go_delivery') {
             if (myAgent.pos.x === currentIntention.x_target && myAgent.pos.y === currentIntention.y_target) {
