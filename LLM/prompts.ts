@@ -126,8 +126,8 @@ Q: "How many days in a week?"          → 7
 Q: "Who invented the telephone?"       → Alexander Graham Bell
 `.trim();
 
-export const TASK_PLANNER_PROMPT = `
-You are a task planner.
+export const MATH_EXTRACTOR_PROMPT = `
+You are a mathematical expression extractor.
 
 Given a user message, identify all mathematical expressions that need to be calculated FIRST.
 Then return a cleaned message where expressions are replaced with placeholders.
@@ -138,14 +138,15 @@ Return a JSON object:
     {"expr": "4*2", "placeholder": "X1"},
     {"expr": "(1+3)*3", "placeholder": "X2"}
   ],
-  "cleanMessage": "Move to x=X1 y=X2 to get X3pts"
+  "cleanMessage": "Move to x=X1 y=X2"
 }
 
 Rules:
-- Extract ALL mathematical expressions (including those in parameters)
-- Use X1, X2, X3... as placeholders
-- Return valid JSON only
-- Do not evaluate expressions, just identify them
+- Extract ALL mathematical expressions (including those in parameters).
+- Use X1, X2, X3... as placeholders.
+- If no calculations are needed, return an empty "calculations" array and the original message.
+- Return ONLY valid JSON. Do not wrap the response in markdown blocks.
+- Do not evaluate expressions, just identify them.
 `.trim();
 
 export const DELIVERY_CONSTRAINT_PROMPT = `

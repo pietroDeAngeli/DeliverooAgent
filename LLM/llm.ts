@@ -125,9 +125,9 @@ export class LLMClient {
         return await this.callModel(messages);
     }
 
-    private async planTasks(msg: string): Promise<{calculations: any[], cleanMessage: string}> {
+    private async mathExtractor(msg: string): Promise<{calculations: any[], cleanMessage: string}> {
         const messages = [
-            { role: "system", content: prompts.TASK_PLANNER_PROMPT },
+            { role: "system", content: prompts.MATH_EXTRACTOR_PROMPT },
             { role: "user", content: msg },
         ];
         const response = await this.callModel(messages);
@@ -138,7 +138,7 @@ export class LLMClient {
         try {
             return JSON.parse(stripped);
         } catch {
-            console.warn("[LLM] planTasks: non-JSON response, using fallback");
+            console.warn("[LLM] MATH extractor: non-JSON response, using fallback");
             return { calculations: [], cleanMessage: msg };
         }
     }
@@ -197,13 +197,13 @@ export class LLMClient {
             return EMPTY;
         }
 
-        // Step 1: Plan and resolve nested math expressions
-        const plan = await this.planTasks(msg);
+        // Step 1: Resolve nested math expressions
+        const res = await this.mathExtractor(msg);
         const calcResults: Record<string, string> = {};
-        for (const calc of plan.calculations) {
+        for (const calc of res.calculations) {
             calcResults[calc.placeholder] = await tools.calculate(calc.expr);
         }
-        let cleanMsg = plan.cleanMessage;
+        let cleanMsg = res.cleanMessage;
         for (const [placeholder, result] of Object.entries(calcResults)) {
             cleanMsg = cleanMsg.replace(placeholder, result);
         }
@@ -245,6 +245,7 @@ export class LLMClient {
                 }
             }
         }
+        this.clearMemory();
         return { reply: replyText.trim(), updates };
     }
 
