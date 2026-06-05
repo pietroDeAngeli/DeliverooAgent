@@ -4,8 +4,11 @@ package-lock.json
 todo
 pddl/sas_plan
 *.log
+main_rl.ts
+pddl/deliveroo-problem.pddl
 
 # Directories
 node_modules/
 pddl/downward/
 types/
+RL/
