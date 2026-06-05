@@ -105,7 +105,7 @@ class World {
         this.parcels = new Map();
         this.other_agents = new Map();
         this.crates = new Map();
-        this.lifespan = 2000; // ms to keep unseen parcels/agents/crates in memory before forgetting them
+        this.lifespan = 3000; // ms to keep unseen parcels/agents/crates in memory before forgetting them
         this.movementDuration = movementDuration;
         this.parcelDecayIntervalMs = parcelDecayIntervalMs;
     }
@@ -115,6 +115,11 @@ class World {
         const seenIds = new Set<string>();
 
         parcels.forEach(p => {
+            if (p.carriedBy) {
+                this.parcels.delete(p.id);
+                return;
+            }
+
             seenIds.add(p.id);
 
             const existingParcel = this.parcels.get(p.id);

@@ -123,7 +123,7 @@ export function generateDesires(
     }
 
     // ── go_pickup ─────────────────────────────────────────────────────────────
-    for (const parcel of utils.get_not_carried_parcels(worldMap.parcels)) {
+    for (const parcel of worldMap.parcels.values()) {
         const distToParcel = agentFinder.getDistance(parcel.pos);
         if (distToParcel === Infinity) continue;
 
