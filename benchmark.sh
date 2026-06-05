@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-RUN_DURATION=60
+RUN_DURATION=$((60*5))
 SERVER_TIMEOUT=60
 AGENT_TIMEOUT=60
 BETWEEN_MAP_SLEEP=2
@@ -283,7 +283,7 @@ fi
 
 if [[ ${#MAPS[@]} -eq 0 ]]; then
   mapfile -t ALL_MAPS < <(
-    find "$GAMES_DIR" -maxdepth 1 -name "*.json" -printf "%f\n" |
+    find "$GAMES_DIR" -maxdepth 1 -name "26c1_*.json" -printf "%f\n" |
     sed 's/\.json$//' |
     sort
   )
