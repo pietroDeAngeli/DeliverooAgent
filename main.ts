@@ -47,8 +47,7 @@ const INTENTION_BLOCK_MS = 8_000;
 // ── LLM state ─────────────────────────────────────────────────────────────────
 // This is basically the belief state for the LLM
 
-const godID = "";
-const godName = "";
+const godName = "admin";
 let useLLM = USE_LLM_EFFECTIVE;
 let llm: LLMClient | null = null;
 let llmBlockedTiles: Set<string> = new Set();
@@ -211,7 +210,7 @@ socket.onConfig((config: any) => {
     movementDuration    = config.GAME.player.movement_duration;
     agentObsDistance    = config.GAME.player.observation_distance;
     const m             = (config.GAME.parcels?.decaying_event ?? '').match(/(\d+(?:\.\d+)?)s$/);
-    parcelDecayInterval = m ? parseFloat(m[1]) * 1000 : 1;
+    parcelDecayInterval = m ? parseFloat(m[1]) * 1000 : Infinity;
     console.log(`Config: move=${movementDuration}ms obs=${agentObsDistance} decay=${parcelDecayInterval}ms`);
 });
 
@@ -267,7 +266,7 @@ socket.onSensing((sensing: any) => {
 });
 
 socket.onMsg( async (id: string, name: string, msg: any, reply: ((response: any) => void) | undefined) => {
-    if (true || useLLM && name === godName && id === godID) {
+    if (useLLM && name === godName) {
         if (!llm) { console.log("[LLM] client not ready yet, skipping message"); return; }
 
         console.log(`[LLM] msg from ${name}(${id}): "${msg}"`);

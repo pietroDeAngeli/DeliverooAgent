@@ -6,10 +6,6 @@ export function get_distance(position1: Position, position2: Position): number {
     return Math.abs(position1.x - position2.x) + Math.abs(position1.y - position2.y);
 }
 
-export function get_not_carried_parcels(parcels: Map<string, Parcel>): Parcel[] {
-    return Array.from(parcels.values()).filter(p => !p.carriedBy);
-}
-
 // Agents stationary for at least this many consecutive sensing updates are treated as BFS obstacles
 const STATIONARY_OBSTACLE_THRESHOLD = 3;
 
