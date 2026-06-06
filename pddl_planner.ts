@@ -70,39 +70,69 @@ export async function getPddlPath(
 
     const { tiles, crates } = worldMap;
 
-    const blocked = new Set<string>([...crates.values()].map((c: Crate) => `${c.pos.x},${c.pos.y}`));
-    for (const k of extraBlocked) blocked.add(k);
+    // Crate positions are NOT treated as hard-blocked: the agent can push them.
+    // Only externally-supplied blocked cells (e.g. stationary opponents) are hard-blocked.
+    const blocked    = new Set<string>(extraBlocked);
+    const crateSet   = new Map<string, Crate>([...crates.values()].map((c: Crate) => [`${c.pos.x},${c.pos.y}`, c]));
+
+    // Sanitise a crate id into a valid PDDL identifier
+    const crateObjId = (c: Crate) => `crate_${c.id.replace(/[^a-zA-Z0-9_]/g, '_')}`;
 
     // ── Build problem PDDL ────────────────────────────────────────────────────
-    const tileKeys     = Array.from(tiles.keys());
-    const tileObjects: string[] = [];
-    const initFacts: string[]   = [`(at me ${tileId(start.x, start.y)})`];
+    const tileKeys      = Array.from(tiles.keys());
+    const tileObjects: string[]  = [];
+    const crateObjects: string[] = [];
+    const initFacts: string[]    = [`(at me ${tileId(start.x, start.y)})`];
 
+    // Tile objects (exclude walls and hard-blocked cells; crate tiles ARE included)
     for (const key of tileKeys) {
         if (tiles.get(key) === '0' || blocked.has(key)) continue;
         const [x, y] = key.split(',').map(Number);
         tileObjects.push(tileId(x, y));
     }
 
+    // Adjacency, clear, type5 facts
     for (const key of tileKeys) {
         const type = tiles.get(key)!;
         if (type === '0' || blocked.has(key)) continue;
         const [x, y]     = key.split(',').map(Number);
+        const id          = tileId(x, y);
         const allowedExit = ONE_WAY_EXIT[type];
+
+        // (clear t) — true when no crate occupies the tile
+        if (!crateSet.has(key)) initFacts.push(`(clear ${id})`);
+
+        // (type5 t) — tile accepts pushed crates
+        if (type === '5') initFacts.push(`(type5 ${id})`);
+
         for (const { dx, dy, rel } of DIRS) {
             if (allowedExit && allowedExit !== rel) continue;
             const nKey = `${x + dx},${y + dy}`;
             if (!tiles.has(nKey) || tiles.get(nKey) === '0' || blocked.has(nKey)) continue;
-            initFacts.push(`(${rel} ${tileId(x, y)} ${tileId(x + dx, y + dy)})`);
+            initFacts.push(`(${rel} ${id} ${tileId(x + dx, y + dy)})`);
         }
     }
+
+    // Crate objects and at-crate facts
+    for (const c of crates.values()) {
+        const key = `${c.pos.x},${c.pos.y}`;
+        if (blocked.has(key)) continue;           // crate on a hard-blocked tile — ignore
+        const obj = crateObjId(c);
+        crateObjects.push(obj);
+        initFacts.push(`(at-crate ${obj} ${tileId(c.pos.x, c.pos.y)})`);
+    }
+
+    const objectsSection = [
+        `    me - agent`,
+        ...(crateObjects.length ? [`    ${crateObjects.join(' ')} - crate`] : []),
+        `    ${tileObjects.join(' ')} - tile`,
+    ].join('\n');
 
     const problemPddl = [
         `(define (problem deliveroo-nav)`,
         `  (:domain deliveroo)`,
         `  (:objects`,
-        `    me - agent`,
-        `    ${tileObjects.join(' ')} - tile`,
+        objectsSection,
         `  )`,
         `  (:init`,
         `    ${initFacts.join('\n    ')}`,
@@ -136,13 +166,15 @@ export async function getPddlPath(
     if (!existsSync(PLAN_FILE)) return null;
 
     // ── Parse plan ────────────────────────────────────────────────────────────
-    // Each line: "(move_right me t2_3 t3_3)" or "; cost = N"
+    // Each line: "(move_right me t2_3 t3_3)", "(push_right me crate_x t1 t2 t3)", or "; cost = N"
     const path: string[] = [];
     for (const line of readFileSync(PLAN_FILE, 'utf8').split('\n')) {
         const t = line.trim();
         if (!t.startsWith('(')) continue;
         const actionName = t.slice(1).split(/\s+/)[0].toLowerCase();
-        path.push(actionName.replace('move_', ''));
+        // Both move_<dir> and push_<dir> encode the direction after the last '_'
+        const dir = actionName.replace(/^(move|push)_/, '');
+        path.push(dir);
     }
 
     return path.length > 0 ? path : null;
