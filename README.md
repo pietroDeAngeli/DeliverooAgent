@@ -38,41 +38,56 @@ cd ../..
 
 ### Running the Agent
 
-You can run the agent in different setups:
+Tokens can be provided via `.env` (`AGENT_TOKEN_BDI`, `AGENT_TOKEN_LLM`) or with the `--token=` flag.
 
 Single Agent BDI:
 ```bash
-node --experimental-strip-types main.ts
+npm start
+# or with explicit token:
+node --experimental-strip-types main.ts --token=YOUR_TOKEN
 ```
 
 Single Agent with LLM (BDI + LLM interface):
 ```bash
-node --experimental-strip-types main.ts --use-llm
+npm run start:llm
+# or with explicit token:
+node --experimental-strip-types main.ts --use-llm --token=YOUR_TOKEN
 ```
 
 Multi Agent mode (two terminals, BDI + LLM):
 ```bash
-# Terminal 1
-node --experimental-strip-types main.ts
-# Terminal 2
-node --experimental-strip-types main.ts --use-llm
+# Terminal 1 — BDI agent (reads AGENT_TOKEN_BDI from .env)
+npm run start:bdi
+# Terminal 2 — LLM agent (reads AGENT_TOKEN_LLM from .env)
+npm run start:llm
 ```
-(Not implemented yet)
 
 ## Run Tests
 
-Single Agent BDI as:
-```bash
-TODO
-``` 
+### LLM unit tests
 
-Multi Agent mode (BDI + LLM)
-```bash
-TODO
-``` 
-
-To run LLM tests you need to configure your `.env` first. Then from the directory `Agent/` run:
+Configure your `.env` first, then from `Agent/`:
 
 ```bash
-node --experimental-strip-types tests/llm_tests.ts
+npm test                  # run all LLM tests
+npm run test:skip-live    # skip tests that require a live API call
+npm run test:verbose      # verbose output
+```
+
+### Single-agent benchmark
+
+Runs the BDI agent on every matching map for 5 minutes each and writes results to `results/benchmark_results.csv`.
+
+```bash
+# all maps (default: 26c1_* pattern)
+bash benchmark_single_agent.sh
+```
+
+### Multi-agent benchmark
+
+Runs the BDI agent and the LLM agent simultaneously on every map and writes per-agent results to `results/multi_agent_benchmark.csv`.
+
+```bash
+# all maps
+bash benchmark_multi_agent.sh
 ```

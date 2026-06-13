@@ -6,6 +6,7 @@ RUN_DURATION=$((60*5))
 SERVER_TIMEOUT=60
 AGENT_TIMEOUT=60
 BETWEEN_MAP_SLEEP=2
+AGENT_TOKEN_BDI=$(grep '^AGENT_TOKEN_BDI=' .env | cut -d '=' -f2-)
 MAPS=()
 
 while [[ $# -gt 0 ]]; do
@@ -369,7 +370,7 @@ for map in "${ALL_MAPS[@]}"; do
 
   setsid bash -lc "
     cd \"$AGENT\"
-    exec node --experimental-strip-types main.ts
+    exec node --experimental-strip-types main.ts --token=\"${AGENT_TOKEN_BDI}\"
   " > "$AGENT_STDOUT" 2> "$AGENT_STDERR" &
 
   agent_pid=$!

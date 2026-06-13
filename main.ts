@@ -15,10 +15,15 @@ const USE_PDDL           = process.env.USE_PDDL === 'true';
 const USE_LLM_ARG        = process.argv.includes('--use-llm');
 const USE_LLM_EFFECTIVE  = USE_LLM_ARG || process.env.USE_LLM === 'true';
 
+const tokenArg = process.argv.find(arg => arg.startsWith('--token='));
+const TOKEN              = tokenArg
+  ? tokenArg.split('=')[1]
+  : (USE_LLM_EFFECTIVE ? process.env.AGENT_TOKEN_LLM : process.env.AGENT_TOKEN_BDI);
+
 console.log(`[Planner] ${USE_PDDL ? 'PDDL local (Fast Downward)' : 'BFS (default)'}`);
 console.log(`[LLM]     ${USE_LLM_EFFECTIVE ? 'enabled' : 'disabled'}`);
 
-const socket = DjsConnect(process.env.HOST as string, process.env.TOKEN as string);
+const socket = DjsConnect(process.env.HOST as string, TOKEN as string);
 
 // ── BDI state ─────────────────────────────────────────────────────────────────
 let myAgent: Agent | undefined;
