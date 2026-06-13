@@ -59,9 +59,9 @@ The control flow handles two main scenarios. If no intention is currently active
 \subsection{Planning Component}
 The planning component enables the agent to compute a path toward a target tile. To evaluate the performance and efficiency of the planning subsystem, we implement a Breadth-First Search (BFS) algorithm as a baseline for shortest-path calculation and compare it against a classical automated planning approach using PDDL. 
 
-\TODO{Update this section if PDDL is extended to handle crates or other dynamic domain objects.}
-
 The PDDL-based module leverages the \textit{Fast Downward} planner, configuring it to use the $A^*$ search algorithm to determine the optimal path. Within this formalization, the planning domain defines the available actions as the movement capabilities of the agent, while the state space represents the grid tiles of the environment. 
+
+Furthermore, the PDDL domain is designed to support crate manipulation in single-agent scenarios, enabling the agent to plan crate movements to navigate more complex environments. However, crate handling in cooperative multi-agent settings is not currently supported.
 
 
 \subsection{LLM Component}
@@ -97,7 +97,3 @@ The \textbf{tools} implemented to support the agent's actions are contained in a
 \end{itemize}
 
 All calculated answers and structured game-state updates are subsequently forwarded also to the \textit{only BDI} agent, ensuring it possesses all the necessary data to execute the required actions and successfully claim the points for the completed request.
-
-
-
-
