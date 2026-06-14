@@ -14,11 +14,14 @@ dotenv.config();
 const USE_PDDL           = process.env.USE_PDDL === 'true';
 const USE_LLM_ARG        = process.argv.includes('--use-llm');
 const USE_LLM_EFFECTIVE  = USE_LLM_ARG || process.env.USE_LLM === 'true';
+const DEBUG              = process.env.DEBUG === 'true' || process.argv.includes('--debug');
 
 const tokenArg = process.argv.find(arg => arg.startsWith('--token='));
 const TOKEN              = tokenArg
   ? tokenArg.split('=')[1]
   : (USE_LLM_EFFECTIVE ? process.env.AGENT_TOKEN_LLM : process.env.AGENT_TOKEN_BDI);
+
+const debug = (msg: string) => DEBUG && console.log(msg);
 
 console.log(`[Planner] ${USE_PDDL ? 'PDDL local (Fast Downward)' : 'BFS (default)'}`);
 console.log(`[LLM]     ${USE_LLM_EFFECTIVE ? 'enabled' : 'disabled'}`);
@@ -120,9 +123,9 @@ function handleNoPath(key: string, label: string): void {
     if (ticks >= STUCK_THRESHOLD) {
         blockedIntentions.set(key, Date.now() + INTENTION_BLOCK_MS);
         intentionStuckTicks.delete(key);
-        console.log(`[Stuck] No path: blocking "${key}" for ${INTENTION_BLOCK_MS / 1000}s`);
+        debug(`[Stuck] No path: blocking "${key}" for ${INTENTION_BLOCK_MS / 1000}s`);
     } else {
-        console.log(`No path to ${label} (${ticks}/${STUCK_THRESHOLD}).`);
+        debug(`No path to ${label} (${ticks}/${STUCK_THRESHOLD}).`);
     }
     currentIntention = null;
     lastIntention    = null;
@@ -133,18 +136,19 @@ async function planPath(start: Position, target: Position): Promise<string[] | n
     const now     = Date.now();
     const blocked = new Set([...tempBlockedCells.entries()].filter(([, u]) => u > now).map(([k]) => k));
 
+    // Return BFS path immediately so the agent is never frozen while the PDDL
+    // subprocess starts up. PDDL runs in the background; when it resolves it
+    // replaces currentPath only if the agent hasn't moved yet (same start tile)
+    // and is still pursuing the same intention target.
+    const bfsPath = utils.get_shortest_path(start, target, worldMap, blocked);
+
     if (USE_PDDL) {
-        // Return BFS path immediately so the agent is never frozen while the PDDL
-        // subprocess starts up. PDDL runs in the background; when it resolves it
-        // replaces currentPath only if the agent hasn't moved yet (same start tile)
-        // and is still pursuing the same intention target.
-        const bfsPath      = utils.get_shortest_path(start, target, worldMap, blocked);
         const capturedType = currentIntention?.type;
         const capturedTx   = target.x;
         const capturedTy   = target.y;
         const wm = worldMap;
         const bl = new Set(blocked);
-        console.log(`[PDDL] ${start.x},${start.y} -> ${target.x},${target.y}`);
+        debug(`[PDDL] ${start.x},${start.y} -> ${target.x},${target.y}`);
         getPddlPath(start, target, wm, bl).then(pddlPath => {
             if (!pddlPath || isRunning) return;
             const sameTarget =
@@ -152,21 +156,20 @@ async function planPath(start: Position, target: Position): Promise<string[] | n
                 currentIntention?.x_target === capturedTx   &&
                 currentIntention?.y_target === capturedTy;
             if (sameTarget && myAgent?.pos.x === start.x && myAgent?.pos.y === start.y) {
-                console.log(`[PDDL] path applied (${pddlPath.length} steps)`);
+                debug(`[PDDL] path applied (${pddlPath.length} steps)`);
                 currentPath = pddlPath;
             }
         }).catch(() => {});
-        return bfsPath;
     }
 
-    return utils.get_shortest_path(start, target, worldMap, blocked);
+    return bfsPath;
 }
 
 async function resilientMove(direction: string, nextPos: Position): Promise<Position | null> {
     const key = `${nextPos.x},${nextPos.y}`;
     if (recentlyFailedCells.has(key)) return null;
     if (worldMap && utils.is_collision_predicted(nextPos.x, nextPos.y, worldMap.other_agents)) {
-        console.log(`Predicted collision at (${nextPos.x},${nextPos.y}), replanning.`);
+        debug(`Predicted collision at (${nextPos.x},${nextPos.y}), replanning.`);
         currentPath = null;
         return null;
     }
@@ -177,10 +180,10 @@ async function resilientMove(direction: string, nextPos: Position): Promise<Posi
         // emitMove timed out (server didn't ack within 1s) — treat as failed move
     }
     if (result) {
-        console.log(`Moved ${direction} to (${result.x},${result.y})`);
+        // console.log(`Moved ${direction} to (${result.x},${result.y})`);
         return { x: result.x, y: result.y };
     }
-    console.log(`Move ${direction} failed at (${nextPos.x},${nextPos.y}).`);
+    // console.log(`Move ${direction} failed at (${nextPos.x},${nextPos.y}).`);
     recentlyFailedCells.add(key);
     currentPath = null;
     return null;
@@ -263,7 +266,7 @@ socket.onSensing((sensing: any) => {
             tempBlockedCells.set(`${pb.x},${pb.y}`, until);
             clearIntention();
             positionHistory.length = 0;
-            console.log(`[Bounce] ABAB (${pa.x},${pa.y})<->(${pb.x},${pb.y}), blocking 4s`);
+            debug(`[Bounce] ABAB (${pa.x},${pa.y})<->(${pb.x},${pb.y}), blocking 4s`);
         }
     }
 
@@ -271,6 +274,7 @@ socket.onSensing((sensing: any) => {
 });
 
 socket.onMsg( async (id: string, name: string, msg: any, reply: ((response: any) => void) | undefined) => {
+    console.log('IL MESSAGGIO E\' IL SEGUENTE,', id, name, msg);
     if (useLLM && name === godName) {
         if (!llm) { console.log("[LLM] client not ready yet, skipping message"); return; }
 
@@ -410,7 +414,7 @@ async function bdiStep(): Promise<void> {
                 d.y_target === currentIntention!.y_target,
             );
             if (!stillValid) {
-                console.log(`[BDI] target gone: ${currentIntention.type}@(${currentIntention.x_target},${currentIntention.y_target})`);
+                debug(`[BDI] target gone: ${currentIntention.type}@(${currentIntention.x_target},${currentIntention.y_target})`);
                 clearIntention();
             }
         }
@@ -437,8 +441,8 @@ async function bdiStep(): Promise<void> {
             // Prefer explore blocks; pickup blocks on physically-blocked tiles are more expensive to retry.
             const sorted  = [...blockedIntentions.entries()].sort(([, a], [, b]) => a - b);
             const release = sorted.find(([k]) => k.startsWith('explore:')) ?? sorted[0];
-            if (release) { blockedIntentions.delete(release[0]); console.log(`[BDI] all blocked, releasing ${release[0]}`); }
-            else          { console.log('[BDI] no active intention'); }
+            if (release) { blockedIntentions.delete(release[0]); debug(`[BDI] all blocked, releasing ${release[0]}`); }
+            else          { debug('[BDI] no active intention'); }
             return;
         }
 
@@ -447,7 +451,7 @@ async function bdiStep(): Promise<void> {
         if (switched || bdiTick % 5 === 0) {
             const top     = desires.slice(0, 4).map(d => `${d.type}@(${d.x_target},${d.y_target})=${d.utility.toFixed(2)}`).join(' | ');
             const blocked = [...blockedIntentions.keys()].join(', ');
-            console.log(
+            debug(
                 `[BDI] #${bdiTick} ${currentIntention.type}@(${currentIntention.x_target},${currentIntention.y_target})` +
                 ` u=${currentIntention.utility.toFixed(2)} carry=${carrying.length}` +
                 `\n  desires: ${top || 'none'}` +
@@ -479,7 +483,7 @@ async function bdiStep(): Promise<void> {
                 if (res) {
                     for (const p of toPickup)
                         if (!carrying.some(c => c.id === p.id)) carrying.push(p);
-                    console.log(toPickup.length > 0
+                    debug(toPickup.length > 0
                         ? `Picked up ${toPickup.length} parcel(s) at (${myAgent.pos.x},${myAgent.pos.y})`
                         : `No parcel at (${myAgent.pos.x},${myAgent.pos.y})`);
                 }
@@ -499,7 +503,7 @@ async function bdiStep(): Promise<void> {
             if (myAgent.pos.x === currentIntention.x_target && myAgent.pos.y === currentIntention.y_target) {
                 const res = await socket.emitPutdown();
                 if (res) {
-                    console.log(`Delivered at (${myAgent.pos.x},${myAgent.pos.y})`); 
+                    console.log(`Delivered at (${myAgent.pos.x},${myAgent.pos.y})`);
                     carrying.length = 0;
                     if (sameMission(currentIntention, llmActiveMission)) completeActiveMission('reached-target');
                 }
@@ -520,7 +524,7 @@ async function bdiStep(): Promise<void> {
             const target = { x: currentIntention.x_target, y: currentIntention.y_target };
             if (utils.get_distance(myAgent.pos, target) <= agentObsDistance) {
                 spawnVisitLog.set(`${target.x},${target.y}`, Date.now());
-                console.log(`[Explore] Visited (${target.x},${target.y})`);
+                debug(`[Explore] Visited (${target.x},${target.y})`);
                 currentIntention = null;
                 lastIntention    = null;
                 return;
@@ -573,7 +577,7 @@ async function bdiStep(): Promise<void> {
                 if (ticks >= STUCK_THRESHOLD) {
                     blockedIntentions.set(prevKey, Date.now() + INTENTION_BLOCK_MS);
                     intentionStuckTicks.delete(prevKey);
-                    console.log(`[Stuck] No progress: blocking "${prevKey}" for ${INTENTION_BLOCK_MS / 1000}s`);
+                    debug(`[Stuck] No progress: blocking "${prevKey}" for ${INTENTION_BLOCK_MS / 1000}s`);
                     if (llmActiveMission && prevKey === missionKey(llmActiveMission)) {
                         completeActiveMission('stuck');
                     }
