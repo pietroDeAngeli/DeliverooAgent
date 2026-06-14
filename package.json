@@ -5,7 +5,8 @@
   "description": "You need to connect to a Deliveroo server.",
   "main": "main.ts",
   "scripts": {
-    "setup": "npm install",
+    "setup": "node scripts/setup.js && npm install",
+    "postinstall": "node scripts/setup.js",
     "start": "node --experimental-strip-types main.ts",
     "start:bdi": "node --experimental-strip-types main.ts",
     "start:llm": "node --experimental-strip-types main.ts --use-llm",

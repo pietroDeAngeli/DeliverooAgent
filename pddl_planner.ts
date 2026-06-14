@@ -4,8 +4,8 @@
  * Drop-in async replacement for BFS path finding using Fast Downward (local solver).
  * Writes domain + problem PDDL to disk, runs fast-downward.py, and parses the plan.
  *
- * Requires Fast Downward to be built under pddl/downward/.
- * Override the Python executable via the PYTHON_CMD env var (default: 'python').
+ * Requires Fast Downward to be built under lib/downward/.
+ * Override the Python executable via the PYTHON_CMD env var (default: 'python3').
  */
 
 import { exec } from 'child_process';
@@ -24,7 +24,7 @@ const PROBLEM_FILE = join(PDDL_DIR, 'deliveroo-problem.pddl');
 const PLAN_FILE    = join(PDDL_DIR, 'deliveroo-plan');
 
 // Relative paths used in the shell command (cwd = PDDL_DIR).
-const DOWNWARD_REL  = join('downward', 'fast-downward.py');
+const DOWNWARD_REL  = join('..', 'lib', 'downward', 'fast-downward.py');
 const DOMAIN_REL    = 'deliveroo-domain.pddl';
 const PROBLEM_REL   = 'deliveroo-problem.pddl';
 const PLAN_REL      = 'deliveroo-plan';

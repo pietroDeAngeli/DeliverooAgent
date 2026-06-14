@@ -18,20 +18,32 @@ You can see the world using [http://localhost:8080/](http://localhost:8080/)
 Create your own credentials there.
 
 ### Setup
+
+**Automatic setup (recommended):**
 ```bash
-git clone https://github.com/pietroDeAngeli/Deliveroo_Agent
-cd Deliveroo_Agent
+git clone https://github.com/pietroDeAngeli/DeliverooAgent
+cd DeliverooAgent
 npm install
 ```
-Modify the `.env.example` file with the required fields and rename it to `.env`
 
-#### Fast Downward installation (PDDL)
-If you want your agent to use PDDL you can clone the `downward` repository and build it with the following commands:
+This will automatically:
+- Initialize the Fast Downward git submodule
+- Build Fast Downward (if not already built)
+- Install npm dependencies
+
+Then modify the `.env.example` file with the required fields and rename it to `.env`.
+
+**Manual setup:**
+If you prefer manual control, run:
+```bash
+npm run setup
+```
+
+#### Fast Downward (PDDL)
+Fast Downward is included as a git submodule at `lib/downward/` on the `release-24.06` branch. It's automatically initialized and built during `npm install`. You can also trigger setup manually with `npm run setup` or rebuild it directly:
 
 ```bash
-cd pddl
-git clone https://github.com/aibasel/downward.git
-cd downward
+cd lib/downward
 python3 build.py
 cd ../..
 ``` 
