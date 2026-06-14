@@ -6,6 +6,7 @@ pddl/sas_plan
 *.log
 main_rl.ts
 pddl/deliveroo-problem.pddl
+pddl/deliveroo-plan
 
 # Directories
 node_modules/
