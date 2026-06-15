@@ -84,6 +84,9 @@ User: "Who invented the radio?"    → common_knowledge
 User: "What is the capital of Germany?" → common_knowledge
 User: "Go to tile (3, 4)"          → generate_desire
 User: "Avoid tile (2, 2)"          → generate_desire
+User: "Do not go through tile (1, 1), you lose 50pts" → generate_desire
+User: "Deliver in (3, 4) for 5x points" → generate_desire
+User: "Delivering in (2, 2) gives 0 pts" → generate_desire
 User: "Drop in leftmost tile for +5 pts" → generate_delivery_constraint
 User: "Do not deliver to rightmost tile" → generate_delivery_constraint
 User: "What time is it in Rome?"   → get_current_time
@@ -147,6 +150,18 @@ Rules:
 - If no calculations are needed, return an empty "calculations" array and the original message.
 - Return ONLY valid JSON. Do not wrap the response in markdown blocks.
 - Do not evaluate expressions, just identify them.
+- CRITICAL: "Nx" used as a multiplier suffix (e.g. "5x punti", "2x points", "3x reward") is NOT a math expression. Do NOT extract it.
+- Only extract expressions that contain operators (+, -, *, /, ^) or function calls, or standalone numeric values that need computing.
+
+Examples:
+Message: "Move to x=4*2 y=(1+3)*3"
+Answer: {"calculations": [{"expr": "4*2", "placeholder": "X1"}, {"expr": "(1+3)*3", "placeholder": "X2"}], "cleanMessage": "Move to x=X1 y=X2"}
+
+Message: "Ogni volta che consegni in (3, 4) ottieni 5x punti"
+Answer: {"calculations": [], "cleanMessage": "Ogni volta che consegni in (3, 4) ottieni 5x punti"}
+
+Message: "Go to tile (2, 3) for 2x reward"
+Answer: {"calculations": [], "cleanMessage": "Go to tile (2, 3) for 2x reward"}
 `.trim();
 
 export const DELIVERY_CONSTRAINT_PROMPT = `
@@ -170,21 +185,58 @@ Rules:
 export const DESIRE_GENERATION_PROMPT = `
 You are an assistant that generates desires for a DeliverooJS agent.
 
-Given an instruction about movement or location, extract the structured desire.
+Given an instruction about movement, location, or delivery preference, extract the structured desire.
 
 Return a JSON object:
 {
-  "action": "go_to" | "avoid",
+  "action": "go_to" | "avoid" | "go_delivery" | "avoid_delivery",
   "x": number,
   "y": number,
-  "points": number
+  "points": number,
+  "multiplier": number
 }
 
 Rules:
-- Use "go_to" when the agent should move to that tile (positive points)
-- Use "avoid" when the agent should NOT go to that tile (negative points or explicit avoidance)
+- "go_to": agent should move to that tile (non-delivery goal, positive points)
+- "avoid": agent must NOT traverse that tile (traversal penalty, negative points)
+- "go_delivery": that tile gives a bonus reward when delivering; multiplier = reward factor (e.g. 5 for 5x, 1 for normal)
+- "avoid_delivery": that tile gives zero or negative reward on delivery; block it as a delivery target only
 - Coordinates are already resolved numbers, extract them directly
 - Extract the points value as a number (negative if losing points)
-- If points are negative, use "avoid"
+- If points are negative and the instruction is about traversal/movement → "avoid"
+- If the instruction is about delivery reward at a specific tile → "go_delivery" or "avoid_delivery"
+- A multiplier > 1 ALWAYS means "go_delivery", never "avoid_delivery"
+- A multiplier < 1 (including 0) ALWAYS means "avoid_delivery", never "go_delivery"
+- Words like "ottieni", "get", "earn", "bonus", "gain" signal a positive reward → "go_delivery"
+- Words like "zero", "0 pts", "no reward", "blocked", "half", "reduced", or fractions like "0.3 of", "30% of", "a third of" signal a sub-1 multiplier → "avoid_delivery"
+- Set multiplier to 1 if not specified or not relevant; multiplier = 1 with no bonus/penalty → "go_to", not "go_delivery"
 - Return valid JSON only, no markdown, no explanation
+
+Examples:
+Input: "Deliver in (3, 4) for 5x points"
+Output: {"action": "go_delivery", "x": 3, "y": 4, "points": 0, "multiplier": 5}
+
+Input: "Delivering in (2, 2) gives 0 pts"
+Output: {"action": "avoid_delivery", "x": 2, "y": 2, "points": 0, "multiplier": 0}
+
+Input: "Ogni volta che consegni in (3, 4) ottieni 5x punti"
+Output: {"action": "go_delivery", "x": 3, "y": 4, "points": 0, "multiplier": 5}
+
+Input: "Do not deliver to tile (1, 5)"
+Output: {"action": "avoid_delivery", "x": 1, "y": 5, "points": 0, "multiplier": 0}
+
+Input: "delivery tile 6, 13 gives x0 points"
+Output: {"action": "avoid_delivery", "x": 6, "y": 13, "points": 0, "multiplier": 0}
+
+Input: "delivery tile 4, 7 gives x0.5 points"
+Output: {"action": "avoid_delivery", "x": 4, "y": 7, "points": 0, "multiplier": 0.5}
+
+Input: "delivering to tile (2, 8) gives you 0.3 of the standard reward"
+Output: {"action": "avoid_delivery", "x": 2, "y": 8, "points": 0, "multiplier": 0.3}
+
+Input: "Go to tile (2, 3)"
+Output: {"action": "go_to", "x": 2, "y": 3, "points": 10, "multiplier": 1}
+
+Input: "Avoid tile (0, 1) you lose 50pts"
+Output: {"action": "avoid", "x": 0, "y": 1, "points": -50, "multiplier": 1}
 `.trim();

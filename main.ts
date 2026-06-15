@@ -61,7 +61,8 @@ let llm: LLMClient | null = null;
 let llmBlockedTiles: Set<string> = new Set();
 const llmPendingMissions: Desire[] = [];
 let llmActiveMission: Desire | null = null;
-// TODO: drop in <dir>most tile to get X points not implemented
+const llmDeliveryBonusTiles = new Map<string, number>(); // "x,y" → multiplier
+const llmBlockedDeliveryTiles = new Set<string>();       // delivery target blocked, traversal allowed
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -294,6 +295,15 @@ socket.onMsg( async (id: string, name: string, msg: any, reply: ((response: any)
                 console.log(`[LLM] blocking tile: ${tileKey}`);
                 llmBlockedTiles.add(tileKey);
             }
+            for (const bonus of result.updates.deliveryBonusTiles) {
+                const key = `${bonus.x},${bonus.y}`;
+                llmDeliveryBonusTiles.set(key, bonus.multiplier);
+                console.log(`[LLM] delivery bonus: (${bonus.x},${bonus.y}) x${bonus.multiplier}`);
+            }
+            for (const key of result.updates.blockedDeliveryTiles) {
+                llmBlockedDeliveryTiles.add(key);
+                console.log(`[LLM] blocked delivery tile: ${key}`);
+            }
             for (const constraint of result.updates.deliveryConstraints) {
                 const tile = findDirectionalDeliveryTile(constraint.direction);
                 if (!tile) { console.log(`[LLM] delivery constraint: tile ${constraint.direction} not found`); continue; }
@@ -331,8 +341,16 @@ async function bdiStep(): Promise<void> {
         : null;
 
     try {
-        // Priority: deliver immediately if standing on a delivery tile
-        if (carrying.length > 0 && utils.tile_is('delivery', myAgent.pos, worldMap.tiles)) {
+        // Priority: deliver immediately if standing on a delivery tile (skip LLM-blocked tiles or
+        // when a higher-multiplier bonus tile exists elsewhere — consistent with line 400 utility*m)
+        const currentTileKey = `${myAgent.pos.x},${myAgent.pos.y}`;
+        const currentMultiplier = llmDeliveryBonusTiles.get(currentTileKey) ?? 1;
+        const bestMultiplier = llmDeliveryBonusTiles.size > 0
+            ? Math.max(...llmDeliveryBonusTiles.values()) : 1;
+        const betterBonusTileExists = bestMultiplier > currentMultiplier;
+        if (carrying.length > 0 && utils.tile_is('delivery', myAgent.pos, worldMap.tiles) &&
+            !llmBlockedDeliveryTiles.has(currentTileKey) &&
+            !betterBonusTileExists) {
             const res = await socket.emitPutdown();
             if (res) {
                 console.log(`[Priority] Delivered ${carrying.length} parcel(s) at (${myAgent.pos.x},${myAgent.pos.y})`);
@@ -372,7 +390,19 @@ async function bdiStep(): Promise<void> {
             }
         }
         
-        let desires = generateDesires(myAgent, worldMap, carrying, spawnVisitLog, activeBlocked, []);
+        let desires = generateDesires(myAgent, worldMap, carrying, spawnVisitLog, activeBlocked, [], new Set(llmDeliveryBonusTiles.keys()));
+
+        // Apply LLM delivery tile preferences: boost bonus tiles, drop blocked delivery targets
+        if (llmDeliveryBonusTiles.size > 0 || llmBlockedDeliveryTiles.size > 0) {
+            desires = desires.flatMap(d => {
+                if (d.type !== 'go_delivery') return [d];
+                const key = `${d.x_target},${d.y_target}`;
+                if (llmBlockedDeliveryTiles.has(key)) return [];
+                const m = llmDeliveryBonusTiles.get(key);
+                if (m) return [{ ...d, utility: d.utility * m }];
+                return [d];
+            }).sort((a, b) => b.utility - a.utility);
+        }
 
 
         // ── Intention revision ────────────────────────────────────────────────

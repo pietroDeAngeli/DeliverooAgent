@@ -82,6 +82,7 @@ export function generateDesires(
     spawnVisitLog: Map<string, number> = new Map(),
     extraBlocked: Set<string> = new Set(),
     llmGoToTile: Desire[] = [],
+    forcedDeliveryKeys: Set<string> = new Set(),
 ): Desire[] {
     if (!myAgent || !worldMap) return [];
 
@@ -112,6 +113,14 @@ export function generateDesires(
         const candidates = freeDelivery.length > 0
             ? freeDelivery
             : allDelivery.sort((a, b) => agentFinder.getDistance(a) - agentFinder.getDistance(b)).slice(0, 3);
+
+        // Always include LLM-bonus delivery tiles even if outside the top-3 by distance
+        for (const key of forcedDeliveryKeys) {
+            if (!candidates.some(c => `${c.x},${c.y}` === key)) {
+                const found = allDelivery.find(d => `${d.x},${d.y}` === key);
+                if (found) candidates.push(found);
+            }
+        }
 
         for (const d of candidates) {
             const dist = agentFinder.getDistance(d);
