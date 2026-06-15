@@ -5,7 +5,7 @@ todo
 pddl/sas_plan
 *.log
 main_rl.ts
-pddl/deliveroo-problem.pddl
+pddl/tmp_*
 pddl/deliveroo-plan
 
 # Directories

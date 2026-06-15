@@ -9,6 +9,11 @@ const baseURL = process.env.LITELLM_BASE_URL;
 const apiKey = process.env.LITELLM_API_KEY;
 const MODEL = process.env.LOCAL_MODEL;
 
+export type MultiAgentCommand =
+    | { type: 'rendezvous'; x: number; y: number; maxDist: number }
+    | { type: 'wait_odd_row' }
+    | { type: 'resume' };
+
 export type LLMUpdate = {
     goToTiles: Array<{ x: number; y: number; utility: number }>;
     blockedTiles: string[]; // "x,y" format
@@ -16,6 +21,7 @@ export type LLMUpdate = {
     deliveryBonusTiles: Array<{ x: number; y: number; multiplier: number }>; // "x,y" → multiplier
     blockedDeliveryTiles: string[]; // "x,y" format — delivery target only, not traversal
     stackConstraints: Array<{ count: number; operator: string; multiplier: number }>;
+    multiAgentCommand?: MultiAgentCommand;
 };
 
 export class LLMClient {
@@ -146,6 +152,28 @@ export class LLMClient {
         }
     }
 
+    private async extractMultiAgentCommand(text: string): Promise<MultiAgentCommand | null> {
+        const messages = [
+            { role: "system", content: prompts.MULTI_AGENT_COMMAND_PROMPT },
+            { role: "user", content: text },
+        ];
+        const response = await this.callModel(messages);
+        try {
+            const parsed = JSON.parse(this.stripMarkdown(response));
+            if (parsed.type === 'rendezvous') {
+                return { type: 'rendezvous', x: Number(parsed.x), y: Number(parsed.y), maxDist: Number(parsed.maxDist ?? 3) };
+            } else if (parsed.type === 'wait_odd_row') {
+                return { type: 'wait_odd_row' };
+            } else if (parsed.type === 'resume') {
+                return { type: 'resume' };
+            }
+            return null;
+        } catch (error) {
+            console.warn("[LLM] extractMultiAgentCommand: non-JSON response, skipping");
+            return null;
+        }
+    }
+
     private async extractStackConstraint(text: string): Promise<{ count: number; operator: string; multiplier: number } | null> {
         const messages = [
             { role: "system", content: prompts.STACK_CONSTRAINT_PROMPT },
@@ -208,7 +236,7 @@ export class LLMClient {
     // ---- Main listener ----
 
     async processMessage(msg: string, agent_position: any): Promise<{ reply: string; updates: LLMUpdate }> {
-        const EMPTY: { reply: string; updates: LLMUpdate } = { reply: "", updates: { goToTiles: [], blockedTiles: [], deliveryConstraints: [], deliveryBonusTiles: [], blockedDeliveryTiles: [], stackConstraints: [] } };
+        const EMPTY: { reply: string; updates: LLMUpdate } = { reply: "", updates: { goToTiles: [], blockedTiles: [], deliveryConstraints: [], deliveryBonusTiles: [], blockedDeliveryTiles: [], stackConstraints: [], multiAgentCommand: undefined } };
 
         if (msg.trim() === "") {
             return EMPTY;
@@ -228,7 +256,7 @@ export class LLMClient {
         // Step 2: Split into sub-requests and dispatch each one
         const msgs: Array<string> = await this.splitMessage(cleanMsg);
         let replyText = "";
-        const updates: LLMUpdate = { goToTiles: [], blockedTiles: [], deliveryConstraints: [], deliveryBonusTiles: [], blockedDeliveryTiles: [], stackConstraints: [] };
+        const updates: LLMUpdate = { goToTiles: [], blockedTiles: [], deliveryConstraints: [], deliveryBonusTiles: [], blockedDeliveryTiles: [], stackConstraints: [], multiAgentCommand: undefined };
 
         for (const subMsg of msgs) {
             const action = await this.decideNextAction(subMsg);
@@ -276,6 +304,11 @@ export class LLMClient {
                 const constraint = await this.extractStackConstraint(subMsg);
                 if (constraint) {
                     updates.stackConstraints.push(constraint);
+                }
+            } else if (action === "multi_agent_command") {
+                const cmd = await this.extractMultiAgentCommand(subMsg);
+                if (cmd) {
+                    updates.multiAgentCommand = cmd;
                 }
             }
         }
