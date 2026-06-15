@@ -400,14 +400,19 @@ socket.onMsg( async (id: string, name: string, msg: any, reply: ((response: any)
 
         applyLLMUpdates(result.updates);
 
-        // Forward processed updates to slave
+        // Forward processed updates to slave BEFORE calling reply() to avoid socket state issues
         if (partnerAgentId) {
-            socket.emitSay(partnerAgentId, JSON.stringify({ kind: 'LLM_UPDATE', updates: result.updates }));
-            console.log(`[Multi-agent] Forwarded LLM update to slave ${partnerAgentId}`);
+            try {
+                await socket.emitSay(partnerAgentId, JSON.stringify({ kind: 'LLM_UPDATE', updates: result.updates }));
+                console.log(`[Multi-agent] Forwarded LLM update to slave ${partnerAgentId}`);
+            } catch (err) {
+                console.warn('[Multi-agent] Failed to forward update to slave:', err instanceof Error ? err.message : err);
+            }
         } else {
             console.log('[Multi-agent] No partner known yet — update not forwarded');
         }
 
+        // Send reply to admin AFTER forwarding to slave
         if (result.reply) {
             if (reply) {
                 reply(result.reply);
