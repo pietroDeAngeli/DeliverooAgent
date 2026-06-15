@@ -1,18 +1,18 @@
 {
   "category": "planTasks",
-  "timestamp": "2026-05-21T21-54-40",
-  "total": 25,
-  "passed": 20,
-  "failed": 5,
-  "accuracy_pct": 80,
-  "avg_latency_ms": 2240,
+  "timestamp": "2026-06-15T13-25-05",
+  "total": 30,
+  "passed": 28,
+  "failed": 2,
+  "accuracy_pct": 93.3,
+  "avg_latency_ms": 1160,
   "tests": [
     {
       "id": 1,
       "description": "No math expressions: clean message unchanged",
       "input": "Go to tile (3, 4) to get some points",
       "passed": true,
-      "latency_ms": 1426,
+      "latency_ms": 1243,
       "actual": "{\"calculations\":[],\"cleanMessage\":\"Go to tile (3, 4) to get some points\"}"
     },
     {
@@ -20,7 +20,7 @@
       "description": "Single multiplication in coordinates",
       "input": "Move to x=4*2 to get +10pts",
       "passed": true,
-      "latency_ms": 1843,
+      "latency_ms": 1079,
       "actual": "{\"calculations\":[{\"expr\":\"4*2\",\"placeholder\":\"X1\"}],\"cleanMessage\":\"Move to x=X1 to get +10pts\"}"
     },
     {
@@ -28,23 +28,23 @@
       "description": "Two expressions in coordinates",
       "input": "Move to x=4*2 y=(1+3)*3 to get +10pts",
       "passed": true,
-      "latency_ms": 2201,
+      "latency_ms": 1612,
       "actual": "{\"calculations\":[{\"expr\":\"4*2\",\"placeholder\":\"X1\"},{\"expr\":\"(1+3)*3\",\"placeholder\":\"X2\"}],\"cleanMessage\":\"Move to x=X1 y=X2 to get +10pts\"}"
     },
     {
       "id": 4,
       "description": "Simple arithmetic in message",
       "input": "Calculate 5+3 and go to tile (2,2)",
-      "passed": false,
-      "latency_ms": 2610,
-      "actual": "{\"calculations\":[{\"expr\":\"5+3\",\"placeholder\":\"X1\"},{\"expr\":\"2\",\"placeholder\":\"X2\"},{\"expr\":\"2\",\"placeholder\":\"X3\"}],\"cleanMessage\":\"Calculate X1 and go to tile (X2,X3)\"}"
+      "passed": true,
+      "latency_ms": 1131,
+      "actual": "{\"calculations\":[{\"expr\":\"5+3\",\"placeholder\":\"X1\"}],\"cleanMessage\":\"Calculate X1 and go to tile (2,2)\"}"
     },
     {
       "id": 5,
       "description": "Reward with expression",
       "input": "Go to tile (5,5) to earn 2*15 points",
       "passed": true,
-      "latency_ms": 1945,
+      "latency_ms": 1164,
       "actual": "{\"calculations\":[{\"expr\":\"2*15\",\"placeholder\":\"X1\"}],\"cleanMessage\":\"Go to tile (5,5) to earn X1 points\"}"
     },
     {
@@ -52,7 +52,7 @@
       "description": "Three expressions in one message",
       "input": "Move to x=2+1 y=3*3 and earn 10*2 pts",
       "passed": true,
-      "latency_ms": 2867,
+      "latency_ms": 2196,
       "actual": "{\"calculations\":[{\"expr\":\"2+1\",\"placeholder\":\"X1\"},{\"expr\":\"3*3\",\"placeholder\":\"X2\"},{\"expr\":\"10*2\",\"placeholder\":\"X3\"}],\"cleanMessage\":\"Move to x=X1 y=X2 and earn X3 pts\"}"
     },
     {
@@ -60,7 +60,7 @@
       "description": "Expression with parentheses only",
       "input": "Go to tile ((5+3)/2, 4)",
       "passed": true,
-      "latency_ms": 1913,
+      "latency_ms": 1143,
       "actual": "{\"calculations\":[{\"expr\":\"(5+3)/2\",\"placeholder\":\"X1\"}],\"cleanMessage\":\"Go to tile (X1, 4)\"}"
     },
     {
@@ -68,7 +68,7 @@
       "description": "Power expression in reward",
       "input": "Go to tile (2, 3) and earn 2^8 points",
       "passed": true,
-      "latency_ms": 1850,
+      "latency_ms": 1191,
       "actual": "{\"calculations\":[{\"expr\":\"2^8\",\"placeholder\":\"X1\"}],\"cleanMessage\":\"Go to tile (2, 3) and earn X1 points\"}"
     },
     {
@@ -76,7 +76,7 @@
       "description": "Nested function expression",
       "input": "Move to x=sqrt(16) y=4",
       "passed": true,
-      "latency_ms": 1561,
+      "latency_ms": 1021,
       "actual": "{\"calculations\":[{\"expr\":\"sqrt(16)\",\"placeholder\":\"X1\"}],\"cleanMessage\":\"Move to x=X1 y=4\"}"
     },
     {
@@ -84,7 +84,7 @@
       "description": "No expression: plain tile coordinates",
       "input": "Go to tile (10, 5)",
       "passed": true,
-      "latency_ms": 1533,
+      "latency_ms": 643,
       "actual": "{\"calculations\":[],\"cleanMessage\":\"Go to tile (10, 5)\"}"
     },
     {
@@ -92,7 +92,7 @@
       "description": "Expression with decimal",
       "input": "Move to x=1.5+2.5 y=8",
       "passed": false,
-      "latency_ms": 2051,
+      "latency_ms": 1475,
       "actual": "{\"calculations\":[{\"expr\":\"1.5+2.5\",\"placeholder\":\"X1\"},{\"expr\":\"8\",\"placeholder\":\"X2\"}],\"cleanMessage\":\"Move to x=X1 y=X2\"}"
     },
     {
@@ -100,23 +100,23 @@
       "description": "Multiple expressions and clean message has placeholders",
       "input": "Go to x=3*2 y=4+1 for 5*2 pts",
       "passed": true,
-      "latency_ms": 2560,
+      "latency_ms": 2166,
       "actual": "{\"calculations\":[{\"expr\":\"3*2\",\"placeholder\":\"X1\"},{\"expr\":\"4+1\",\"placeholder\":\"X2\"},{\"expr\":\"5*2\",\"placeholder\":\"X3\"}],\"cleanMessage\":\"Go to x=X1 y=X2 for X3 pts\"}"
     },
     {
       "id": 13,
       "description": "Question with arithmetic",
       "input": "What is 100/4?",
-      "passed": false,
-      "latency_ms": 1946,
-      "actual": "{\"calculations\":[],\"cleanMessage\":\"What is 100/4?\"}"
+      "passed": true,
+      "latency_ms": 940,
+      "actual": "{\"calculations\":[{\"expr\":\"100/4\",\"placeholder\":\"X1\"}],\"cleanMessage\":\"What is X1?\"}"
     },
     {
       "id": 14,
       "description": "Clean message replaces expression with placeholder",
       "input": "Go to x=6*2",
       "passed": true,
-      "latency_ms": 1637,
+      "latency_ms": 945,
       "actual": "{\"calculations\":[{\"expr\":\"6*2\",\"placeholder\":\"X1\"}],\"cleanMessage\":\"Go to x=X1\"}"
     },
     {
@@ -124,7 +124,7 @@
       "description": "Floor function as expression",
       "input": "Go to tile (floor(7.5), 3)",
       "passed": true,
-      "latency_ms": 1844,
+      "latency_ms": 1125,
       "actual": "{\"calculations\":[{\"expr\":\"floor(7.5)\",\"placeholder\":\"X1\"}],\"cleanMessage\":\"Go to tile (X1, 3)\"}"
     },
     {
@@ -132,7 +132,7 @@
       "description": "Two separate arithmetic expressions",
       "input": "x=10-3 and y=2+8",
       "passed": true,
-      "latency_ms": 1945,
+      "latency_ms": 1395,
       "actual": "{\"calculations\":[{\"expr\":\"10-3\",\"placeholder\":\"X1\"},{\"expr\":\"2+8\",\"placeholder\":\"X2\"}],\"cleanMessage\":\"x=X1 and y=X2\"}"
     },
     {
@@ -140,7 +140,7 @@
       "description": "Expression with modulo",
       "input": "Tile position x=10%3",
       "passed": true,
-      "latency_ms": 1638,
+      "latency_ms": 938,
       "actual": "{\"calculations\":[{\"expr\":\"10%3\",\"placeholder\":\"X1\"}],\"cleanMessage\":\"Tile position x=X1\"}"
     },
     {
@@ -148,7 +148,7 @@
       "description": "Pi in expression",
       "input": "Go to x=round(pi) y=5",
       "passed": true,
-      "latency_ms": 1536,
+      "latency_ms": 988,
       "actual": "{\"calculations\":[{\"expr\":\"round(pi)\",\"placeholder\":\"X1\"}],\"cleanMessage\":\"Go to x=X1 y=5\"}"
     },
     {
@@ -156,7 +156,7 @@
       "description": "No expression: words only",
       "input": "What is the capital of France?",
       "passed": true,
-      "latency_ms": 1946,
+      "latency_ms": 596,
       "actual": "{\"calculations\":[],\"cleanMessage\":\"What is the capital of France?\"}"
     },
     {
@@ -164,31 +164,31 @@
       "description": "No expression: position query",
       "input": "Where am I?",
       "passed": true,
-      "latency_ms": 1228,
+      "latency_ms": 512,
       "actual": "{\"calculations\":[],\"cleanMessage\":\"Where am I?\"}"
     },
     {
       "id": 21,
       "description": "Expression embedded in Italian input",
       "input": "Vai a x=3*4 y=2 per +10 punti",
-      "passed": false,
-      "latency_ms": 9319,
-      "actual": "{\"calculations\":[],\"cleanMessage\":\"Vai a x=3*4 y=2 per +10 punti\"}"
+      "passed": true,
+      "latency_ms": 1179,
+      "actual": "{\"calculations\":[{\"expr\":\"3*4\",\"placeholder\":\"X1\"}],\"cleanMessage\":\"Vai a x=X1 y=2 per +10 punti\"}"
     },
     {
       "id": 22,
       "description": "Complex expression with multiple operators",
       "input": "Set reward to 3+4*2-1",
-      "passed": false,
-      "latency_ms": 2558,
-      "actual": "{\"calculations\":[{\"expr\":\"4*2\",\"placeholder\":\"X1\"},{\"expr\":\"3+X1-1\",\"placeholder\":\"X2\"}],\"cleanMessage\":\"Set reward to X2\"}"
+      "passed": true,
+      "latency_ms": 1049,
+      "actual": "{\"calculations\":[{\"expr\":\"3+4*2-1\",\"placeholder\":\"X1\"}],\"cleanMessage\":\"Set reward to X1\"}"
     },
     {
       "id": 23,
       "description": "Two function calls as expressions",
       "input": "Move to x=abs(-3) y=ceil(2.1)",
       "passed": true,
-      "latency_ms": 2047,
+      "latency_ms": 1473,
       "actual": "{\"calculations\":[{\"expr\":\"abs(-3)\",\"placeholder\":\"X1\"},{\"expr\":\"ceil(2.1)\",\"placeholder\":\"X2\"}],\"cleanMessage\":\"Move to x=X1 y=X2\"}"
     },
     {
@@ -196,7 +196,7 @@
       "description": "Exponent in x coordinate",
       "input": "Go to tile (2^3, 2^2)",
       "passed": true,
-      "latency_ms": 2048,
+      "latency_ms": 1479,
       "actual": "{\"calculations\":[{\"expr\":\"2^3\",\"placeholder\":\"X1\"},{\"expr\":\"2^2\",\"placeholder\":\"X2\"}],\"cleanMessage\":\"Go to tile (X1, X2)\"}"
     },
     {
@@ -204,8 +204,48 @@
       "description": "Placeholder format uses X1, X2 etc in clean message",
       "input": "Move to x=5*2 y=3+1",
       "passed": true,
-      "latency_ms": 1946,
+      "latency_ms": 1637,
       "actual": "{\"calculations\":[{\"expr\":\"5*2\",\"placeholder\":\"X1\"},{\"expr\":\"3+1\",\"placeholder\":\"X2\"}],\"cleanMessage\":\"Move to x=X1 y=X2\"}"
+    },
+    {
+      "id": 26,
+      "description": "Italian 5x multiplier suffix must not be extracted as math",
+      "input": "Ogni volta che consegni in (3, 4) ottieni 5x punti",
+      "passed": true,
+      "latency_ms": 989,
+      "actual": "{\"calculations\":[],\"cleanMessage\":\"Ogni volta che consegni in (3, 4) ottieni 5x punti\"}"
+    },
+    {
+      "id": 27,
+      "description": "English 2x reward suffix must not be extracted as math",
+      "input": "Go to tile (2, 3) for 2x reward",
+      "passed": true,
+      "latency_ms": 788,
+      "actual": "{\"calculations\":[],\"cleanMessage\":\"Go to tile (2, 3) for 2x reward\"}"
+    },
+    {
+      "id": 28,
+      "description": "English 5x points suffix must not be extracted as math",
+      "input": "Deliver in (3, 4) for 5x points",
+      "passed": true,
+      "latency_ms": 789,
+      "actual": "{\"calculations\":[],\"cleanMessage\":\"Deliver in (3, 4) for 5x points\"}"
+    },
+    {
+      "id": 29,
+      "description": "Real math expression extracted but Nx multiplier suffix left intact",
+      "input": "Go to x=2+3 for 5x points",
+      "passed": false,
+      "latency_ms": 1086,
+      "actual": "{\"calculations\":[{\"expr\":\"2+3\",\"placeholder\":\"X1\"}],\"cleanMessage\":\"Go to x=X1 for 5x points\"}"
+    },
+    {
+      "id": 30,
+      "description": "Italian 10x multiplier suffix must not be extracted as math",
+      "input": "Consegna in (1, 2) per 10x punti",
+      "passed": true,
+      "latency_ms": 835,
+      "actual": "{\"calculations\":[],\"cleanMessage\":\"Consegna in (1, 2) per 10x punti\"}"
     }
   ]
 }

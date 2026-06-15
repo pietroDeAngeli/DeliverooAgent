@@ -148,5 +148,83 @@
     "description": "Desire with avoid semantic → generate_desire",
     "input": "Stay away from tile (9, 9), it has -20 pts",
     "expected_action": "generate_desire"
+  },
+  {
+    "id": 26,
+    "description": "Traversal penalty tile → generate_desire",
+    "input": "Do not go through tile (2, 3) otherwise you lose 50pts",
+    "expected_action": "generate_desire"
+  },
+  {
+    "id": 27,
+    "description": "Traversal penalty phrased as walking cost → generate_desire",
+    "input": "Tile (5, 5) costs you 50 points if you walk through it",
+    "expected_action": "generate_desire"
+  },
+  {
+    "id": 28,
+    "description": "Delivery bonus multiplier → generate_desire",
+    "input": "Every time you deliver in (3, 4) you get 5x pts",
+    "expected_action": "generate_desire"
+  },
+  {
+    "id": 29,
+    "description": "Delivery bonus at tile → generate_desire",
+    "input": "Delivering at (0, 7) gives you 3x the normal reward",
+    "expected_action": "generate_desire"
+  },
+  {
+    "id": 30,
+    "description": "Zero-point delivery tile → generate_desire",
+    "input": "Every time you deliver in (1, 2) you get 0 pts",
+    "expected_action": "generate_desire"
+  },
+  {
+    "id": 31,
+    "description": "Delivery tile yields nothing → generate_desire",
+    "input": "Dropping packages at (4, 4) gives no points at all",
+    "expected_action": "generate_desire"
+  },
+  {
+    "id": 32,
+    "description": "Directional delivery still → generate_delivery_constraint",
+    "input": "Drop in the leftmost tile for +5 pts",
+    "expected_action": "generate_delivery_constraint"
+  },
+  {
+    "id": 33,
+    "description": "Italian: traversal penalty → generate_desire",
+    "input": "Non passare per la casella (2, 2), perdi 50 punti",
+    "expected_action": "generate_desire"
+  },
+  {
+    "id": 34,
+    "description": "Italian: delivery bonus → generate_desire",
+    "input": "Ogni volta che consegni in (3, 4) ottieni 5x punti",
+    "expected_action": "generate_desire"
+  },
+  {
+    "id": 35,
+    "description": "Admin x0 delivery tile → generate_desire",
+    "input": "delivery tile 6,13 gives x0 points",
+    "expected_action": "generate_desire"
+  },
+  {
+    "id": 36,
+    "description": "Admin high bonus tile x200 → generate_desire",
+    "input": "delivery tile 2,13 gives x200 of the reward",
+    "expected_action": "generate_desire"
+  },
+  {
+    "id": 37,
+    "description": "Sub-1 multiplier x0.5 delivery tile → generate_desire",
+    "input": "delivery tile 4,7 gives x0.5 points",
+    "expected_action": "generate_desire"
+  },
+  {
+    "id": 38,
+    "description": "Fractional reward phrasing → generate_desire",
+    "input": "delivering to tile (2, 8) gives you 0.3 of the standard reward",
+    "expected_action": "generate_desire"
   }
 ]

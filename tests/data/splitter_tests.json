@@ -173,5 +173,40 @@
     "input": "Avoid tile (9,9) penalty -20pts",
     "expected_count": 1,
     "keywords_in_any": ["9,9"]
+  },
+  {
+    "id": 26,
+    "description": "Traversal penalty stays as one",
+    "input": "Do not go through tile (2, 3) otherwise you lose 50pts",
+    "expected_count": 1,
+    "keywords_in_any": ["2"]
+  },
+  {
+    "id": 27,
+    "description": "Delivery bonus stays as one",
+    "input": "Every time you deliver in (3, 4) you get 5x pts",
+    "expected_count": 1,
+    "keywords_in_any": ["3"]
+  },
+  {
+    "id": 28,
+    "description": "Two bonus delivery tiles split into two",
+    "input": "Every time you deliver in (3, 4) or (2, 1) you get 5x pts",
+    "expected_count": 2,
+    "keywords_in_any": ["3", "2"]
+  },
+  {
+    "id": 29,
+    "description": "Traversal penalty + delivery bonus split",
+    "input": "Do not go through tile (5, 5) and deliver in (3, 4) for 5x pts",
+    "expected_count": 2,
+    "keywords_in_any": ["5,5", "3"]
+  },
+  {
+    "id": 30,
+    "description": "Zero-point delivery tile stays as one",
+    "input": "Every time you deliver in (1, 2) you get 0 pts",
+    "expected_count": 1,
+    "keywords_in_any": ["1"]
   }
 ]

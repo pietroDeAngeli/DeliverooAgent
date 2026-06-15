@@ -1,18 +1,18 @@
 {
   "category": "extractCityName",
-  "timestamp": "2026-05-21T21-54-40",
+  "timestamp": "2026-06-15T13-25-05",
   "total": 25,
   "passed": 25,
   "failed": 0,
   "accuracy_pct": 100,
-  "avg_latency_ms": 282,
+  "avg_latency_ms": 167,
   "tests": [
     {
       "id": 1,
       "description": "Simple city: London",
       "input": "What is the current time in London?",
       "passed": true,
-      "latency_ms": 506,
+      "latency_ms": 220,
       "actual": "London"
     },
     {
@@ -20,7 +20,7 @@
       "description": "Simple city: Paris",
       "input": "Tell me the time in Paris",
       "passed": true,
-      "latency_ms": 203,
+      "latency_ms": 142,
       "actual": "Paris"
     },
     {
@@ -28,7 +28,7 @@
       "description": "Simple city: Tokyo",
       "input": "What time is it in Tokyo?",
       "passed": true,
-      "latency_ms": 308,
+      "latency_ms": 168,
       "actual": "Tokyo"
     },
     {
@@ -36,7 +36,7 @@
       "description": "Simple city: New York",
       "input": "What is the time in New York?",
       "passed": true,
-      "latency_ms": 219,
+      "latency_ms": 175,
       "actual": "New York"
     },
     {
@@ -44,7 +44,7 @@
       "description": "Simple city: Rome",
       "input": "Tell me the current time in Rome",
       "passed": true,
-      "latency_ms": 293,
+      "latency_ms": 173,
       "actual": "Rome"
     },
     {
@@ -52,7 +52,7 @@
       "description": "Simple city: Berlin",
       "input": "What time is it in Berlin right now?",
       "passed": true,
-      "latency_ms": 204,
+      "latency_ms": 148,
       "actual": "Berlin"
     },
     {
@@ -60,7 +60,7 @@
       "description": "Simple city: Sydney",
       "input": "What is the current time in Sydney?",
       "passed": true,
-      "latency_ms": 307,
+      "latency_ms": 170,
       "actual": "Sydney"
     },
     {
@@ -68,7 +68,7 @@
       "description": "Simple city: Los Angeles",
       "input": "What time is it in Los Angeles?",
       "passed": true,
-      "latency_ms": 227,
+      "latency_ms": 169,
       "actual": "Los Angeles"
     },
     {
@@ -76,7 +76,7 @@
       "description": "City embedded in longer sentence",
       "input": "I need to know the time in Moscow to schedule a call",
       "passed": true,
-      "latency_ms": 285,
+      "latency_ms": 181,
       "actual": "Moscow"
     },
     {
@@ -84,7 +84,7 @@
       "description": "City with country context",
       "input": "What time is it in Beijing, China?",
       "passed": true,
-      "latency_ms": 306,
+      "latency_ms": 170,
       "actual": "Beijing"
     },
     {
@@ -92,7 +92,7 @@
       "description": "City with 'right now' emphasis",
       "input": "Give me the time in Dubai right now",
       "passed": true,
-      "latency_ms": 306,
+      "latency_ms": 170,
       "actual": "Dubai"
     },
     {
@@ -100,7 +100,7 @@
       "description": "City with 'currently'",
       "input": "What is currently the time in Toronto?",
       "passed": true,
-      "latency_ms": 204,
+      "latency_ms": 147,
       "actual": "Toronto"
     },
     {
@@ -108,7 +108,7 @@
       "description": "City in Italian sentence",
       "input": "Che ore sono a Milano?",
       "passed": true,
-      "latency_ms": 308,
+      "latency_ms": 169,
       "actual": "Milano"
     },
     {
@@ -116,7 +116,7 @@
       "description": "City in Italian sentence: Roma",
       "input": "Che ora è a Roma adesso?",
       "passed": true,
-      "latency_ms": 307,
+      "latency_ms": 170,
       "actual": "Roma"
     },
     {
@@ -124,7 +124,7 @@
       "description": "Capital city: Washington DC",
       "input": "Tell me the time in Washington DC",
       "passed": true,
-      "latency_ms": 306,
+      "latency_ms": 167,
       "actual": "Washington DC"
     },
     {
@@ -132,7 +132,7 @@
       "description": "City after 'local time' phrase",
       "input": "What is the local time in Singapore?",
       "passed": true,
-      "latency_ms": 195,
+      "latency_ms": 148,
       "actual": "Singapore"
     },
     {
@@ -140,7 +140,7 @@
       "description": "City with timezone mention",
       "input": "What is the time in Amsterdam (CET timezone)?",
       "passed": true,
-      "latency_ms": 215,
+      "latency_ms": 168,
       "actual": "Amsterdam"
     },
     {
@@ -148,7 +148,7 @@
       "description": "City: Mumbai",
       "input": "Get me the current time in Mumbai",
       "passed": true,
-      "latency_ms": 307,
+      "latency_ms": 166,
       "actual": "Mumbai"
     },
     {
@@ -156,7 +156,7 @@
       "description": "City: Cairo",
       "input": "What is the time in Cairo?",
       "passed": true,
-      "latency_ms": 307,
+      "latency_ms": 168,
       "actual": "Cairo"
     },
     {
@@ -164,7 +164,7 @@
       "description": "City with abbreviated form: NYC",
       "input": "What time is it in NYC?",
       "passed": true,
-      "latency_ms": 307,
+      "latency_ms": 168,
       "actual": "NYC"
     },
     {
@@ -172,7 +172,7 @@
       "description": "City: Seoul",
       "input": "Current time in Seoul please",
       "passed": true,
-      "latency_ms": 306,
+      "latency_ms": 168,
       "actual": "Seoul"
     },
     {
@@ -180,7 +180,7 @@
       "description": "City: Chicago",
       "input": "What time is it in Chicago right now?",
       "passed": true,
-      "latency_ms": 204,
+      "latency_ms": 148,
       "actual": "Chicago"
     },
     {
@@ -188,7 +188,7 @@
       "description": "City with 'for me' phrase",
       "input": "Tell me the time for me in Madrid",
       "passed": true,
-      "latency_ms": 307,
+      "latency_ms": 170,
       "actual": "Madrid"
     },
     {
@@ -196,7 +196,7 @@
       "description": "City: Bangkok",
       "input": "I want to know the time in Bangkok",
       "passed": true,
-      "latency_ms": 307,
+      "latency_ms": 168,
       "actual": "Bangkok"
     },
     {
@@ -204,7 +204,7 @@
       "description": "City: Nairobi",
       "input": "What is the current time in Nairobi?",
       "passed": true,
-      "latency_ms": 307,
+      "latency_ms": 168,
       "actual": "Nairobi"
     }
   ]
