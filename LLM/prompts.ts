@@ -44,6 +44,8 @@ Rules:
 - Keep coordinates, formulas, scores, quantities, and goals attached to the action they modify.
 - Phrases like "to get +10pts", "for 5 points", "with speed 2", or "using X" are modifiers, not separate requests.
 - CRITICAL: If two parts of the message are semantically dependent (answering one requires knowing the answer to the other), do NOT split them — keep them as a single request.
+- CRITICAL: A delivery tile and its reward multiplier are semantically inseparable — NEVER split them into separate sub-requests.
+- SPECIAL CASE: If a single delivery reward applies to MULTIPLE tiles (e.g. "deliver in (x1,y1) or (x2,y2) for Nx reward"), split by tile but include the full reward in EACH sub-request.
 
 Examples:
 Message: "Go to tile (3,4) to get +10pts and tell me the current time in London"
@@ -60,6 +62,15 @@ Answer: ["What is the first letter of the capital of Italy?"]
 
 Message: "How many letters does the capital of France have?"
 Answer: ["How many letters does the capital of France have?"]
+
+Message: "deliverying in 2,13 gives triple the reward"
+Answer: ["deliverying in 2,13 gives triple the reward"]
+
+Message: "Every time you deliver in (3,4) or (5,6) you get 5x pts"
+Answer: ["Every time you deliver in (3,4) you get 5x pts", "Every time you deliver in (5,6) you get 5x pts"]
+
+Message: "Delivering to (1,2) or (3,4) gives 0 pts"
+Answer: ["Delivering to (1,2) gives 0 pts", "Delivering to (3,4) gives 0 pts"]
 `.trim();
 
 export const ORCHESTRATOR_PROMPT = `

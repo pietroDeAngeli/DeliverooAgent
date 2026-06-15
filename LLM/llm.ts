@@ -279,6 +279,10 @@ export class LLMClient {
                 }
             }
         }
+        // If a tile is registered as a delivery bonus, drop any go_to mission for the same tile
+        const bonusKeys = new Set(updates.deliveryBonusTiles.map(b => `${b.x},${b.y}`));
+        updates.goToTiles = updates.goToTiles.filter(t => !bonusKeys.has(`${t.x},${t.y}`));
+
         this.clearMemory();
         return { reply: replyText.trim(), updates };
     }
