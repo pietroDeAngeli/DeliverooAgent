@@ -1,18 +1,18 @@
 {
   "category": "tools",
-  "timestamp": "2026-05-21T21-54-40",
+  "timestamp": "2026-06-15T14-06-17",
   "total": 53,
-  "passed": 53,
-  "failed": 0,
-  "accuracy_pct": 100,
-  "avg_latency_ms": 2,
+  "passed": 52,
+  "failed": 1,
+  "accuracy_pct": 98.1,
+  "avg_latency_ms": 1,
   "tests": [
     {
       "id": 1,
       "description": "[calculate] Simple addition",
       "input": "2+2",
       "passed": true,
-      "latency_ms": 7,
+      "latency_ms": 1,
       "actual": "4"
     },
     {
@@ -20,7 +20,7 @@
       "description": "[calculate] Simple subtraction",
       "input": "10-3",
       "passed": true,
-      "latency_ms": 1,
+      "latency_ms": 0,
       "actual": "7"
     },
     {
@@ -36,7 +36,7 @@
       "description": "[calculate] Simple division",
       "input": "10/4",
       "passed": true,
-      "latency_ms": 1,
+      "latency_ms": 0,
       "actual": "2.5"
     },
     {
@@ -44,7 +44,7 @@
       "description": "[calculate] Power operation",
       "input": "2^10",
       "passed": true,
-      "latency_ms": 1,
+      "latency_ms": 0,
       "actual": "1024"
     },
     {
@@ -52,7 +52,7 @@
       "description": "[calculate] Square root",
       "input": "sqrt(16)",
       "passed": true,
-      "latency_ms": 4,
+      "latency_ms": 0,
       "actual": "4"
     },
     {
@@ -60,7 +60,7 @@
       "description": "[calculate] Parenthesized expression",
       "input": "(2+3)*4",
       "passed": true,
-      "latency_ms": 1,
+      "latency_ms": 0,
       "actual": "20"
     },
     {
@@ -76,7 +76,7 @@
       "description": "[calculate] Modulo",
       "input": "10 % 3",
       "passed": true,
-      "latency_ms": 7,
+      "latency_ms": 0,
       "actual": "1"
     },
     {
@@ -84,7 +84,7 @@
       "description": "[calculate] Absolute value",
       "input": "abs(-7)",
       "passed": true,
-      "latency_ms": 1,
+      "latency_ms": 0,
       "actual": "7"
     },
     {
@@ -100,7 +100,7 @@
       "description": "[calculate] Ceil function",
       "input": "ceil(3.2)",
       "passed": true,
-      "latency_ms": 1,
+      "latency_ms": 0,
       "actual": "4"
     },
     {
@@ -116,7 +116,7 @@
       "description": "[calculate] Min of two values",
       "input": "min(3, 7)",
       "passed": true,
-      "latency_ms": 7,
+      "latency_ms": 0,
       "actual": "3"
     },
     {
@@ -124,7 +124,7 @@
       "description": "[calculate] Max of two values",
       "input": "max(3, 7)",
       "passed": true,
-      "latency_ms": 5,
+      "latency_ms": 0,
       "actual": "7"
     },
     {
@@ -140,7 +140,7 @@
       "description": "[calculate] Cube root",
       "input": "cbrt(27)",
       "passed": true,
-      "latency_ms": 1,
+      "latency_ms": 0,
       "actual": "3"
     },
     {
@@ -155,16 +155,16 @@
       "id": 19,
       "description": "[calculate] Log base 10",
       "input": "log(100, 10)",
-      "passed": true,
-      "latency_ms": 1,
-      "actual": "2"
+      "passed": false,
+      "latency_ms": 0,
+      "actual": "4.605170185988092"
     },
     {
       "id": 20,
       "description": "[calculate] Sin of 0",
       "input": "sin(0)",
       "passed": true,
-      "latency_ms": 1,
+      "latency_ms": 0,
       "actual": "0"
     },
     {
@@ -236,8 +236,8 @@
       "description": "[getCurrentTime] Known city: London",
       "input": "London",
       "passed": true,
-      "latency_ms": 40,
-      "actual": "The current local time in London is 2026-05-21 22:52:43 (Europe/London)."
+      "latency_ms": 42,
+      "actual": "The current local time in London is 2026-06-15 15:04:18 (Europe/London)."
     },
     {
       "id": 102,
@@ -245,7 +245,7 @@
       "input": "Rome",
       "passed": true,
       "latency_ms": 2,
-      "actual": "The current local time in Rome is 2026-05-21 23:52:44 (Europe/Rome)."
+      "actual": "The current local time in Rome is 2026-06-15 16:04:18 (Europe/Rome)."
     },
     {
       "id": 103,
@@ -253,7 +253,7 @@
       "input": "Tokyo",
       "passed": true,
       "latency_ms": 2,
-      "actual": "The current local time in Tokyo is 2026-05-22 06:52:44 (Asia/Tokyo)."
+      "actual": "The current local time in Tokyo is 2026-06-15 23:04:18 (Asia/Tokyo)."
     },
     {
       "id": 104,
@@ -261,23 +261,23 @@
       "input": "New York",
       "passed": true,
       "latency_ms": 1,
-      "actual": "The current local time in New York is 2026-05-21 17:52:44 (America/New_York)."
+      "actual": "The current local time in New York is 2026-06-15 10:04:18 (America/New_York)."
     },
     {
       "id": 105,
       "description": "[getCurrentTime] Known city: Sydney",
       "input": "Sydney",
       "passed": true,
-      "latency_ms": 2,
-      "actual": "The current local time in Sydney is 2026-05-22 07:52:44 (Australia/Sydney)."
+      "latency_ms": 0,
+      "actual": "The current local time in Sydney is 2026-06-16 00:04:18 (Australia/Sydney)."
     },
     {
       "id": 106,
       "description": "[getCurrentTime] Known city: Dubai",
       "input": "Dubai",
       "passed": true,
-      "latency_ms": 1,
-      "actual": "The current local time in Dubai is 2026-05-22 01:52:44 (Asia/Dubai)."
+      "latency_ms": 0,
+      "actual": "The current local time in Dubai is 2026-06-15 18:04:18 (Asia/Dubai)."
     },
     {
       "id": 107,
@@ -285,15 +285,15 @@
       "input": "Berlin",
       "passed": true,
       "latency_ms": 2,
-      "actual": "The current local time in Berlin is 2026-05-21 23:52:44 (Europe/Berlin)."
+      "actual": "The current local time in Berlin is 2026-06-15 16:04:18 (Europe/Berlin)."
     },
     {
       "id": 108,
       "description": "[getCurrentTime] Known city: Los Angeles",
       "input": "Los Angeles",
       "passed": true,
-      "latency_ms": 3,
-      "actual": "The current local time in Los Angeles is 2026-05-21 14:52:44 (America/Los_Angeles)."
+      "latency_ms": 1,
+      "actual": "The current local time in Los Angeles is 2026-06-15 07:04:18 (America/Los_Angeles)."
     },
     {
       "id": 109,
@@ -301,7 +301,7 @@
       "input": "Paris",
       "passed": true,
       "latency_ms": 1,
-      "actual": "The current local time in Paris is 2026-05-21 23:52:44 (Europe/Paris)."
+      "actual": "The current local time in Paris is 2026-06-15 16:04:18 (Europe/Paris)."
     },
     {
       "id": 110,
@@ -309,7 +309,7 @@
       "input": "Singapore",
       "passed": true,
       "latency_ms": 1,
-      "actual": "The current local time in Singapore is 2026-05-22 05:52:44 (Asia/Singapore)."
+      "actual": "The current local time in Singapore is 2026-06-15 22:04:18 (Asia/Singapore)."
     },
     {
       "id": 111,
@@ -341,22 +341,22 @@
       "input": "Moscow",
       "passed": true,
       "latency_ms": 1,
-      "actual": "The current local time in Moscow is 2026-05-22 00:52:44 (Europe/Moscow)."
+      "actual": "The current local time in Moscow is 2026-06-15 17:04:18 (Europe/Moscow)."
     },
     {
       "id": 115,
       "description": "[getCurrentTime] Result contains timezone format YYYY-MM-DD",
       "input": "Toronto",
       "passed": true,
-      "latency_ms": 1,
-      "actual": "The current local time in Toronto is 2026-05-21 17:52:44 (America/Toronto)."
+      "latency_ms": 0,
+      "actual": "The current local time in Toronto is 2026-06-15 10:04:18 (America/Toronto)."
     },
     {
       "id": 201,
       "description": "[getMyPosition] Valid integer position",
       "input": "{\"x\":3,\"y\":4}",
       "passed": true,
-      "latency_ms": 0,
+      "latency_ms": 1,
       "actual": "My position is (3, 4)"
     },
     {

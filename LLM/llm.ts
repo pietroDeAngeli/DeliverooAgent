@@ -13,6 +13,9 @@ export type LLMUpdate = {
     goToTiles: Array<{ x: number; y: number; utility: number }>;
     blockedTiles: string[]; // "x,y" format
     deliveryConstraints: Array<{ direction: string; points: number }>;
+    deliveryBonusTiles: Array<{ x: number; y: number; multiplier: number }>; // "x,y" → multiplier
+    blockedDeliveryTiles: string[]; // "x,y" format — delivery target only, not traversal
+    stackConstraints: Array<{ count: number; operator: string; multiplier: number }>;
 };
 
 export class LLMClient {
@@ -143,6 +146,20 @@ export class LLMClient {
         }
     }
 
+    private async extractStackConstraint(text: string): Promise<{ count: number; operator: string; multiplier: number } | null> {
+        const messages = [
+            { role: "system", content: prompts.STACK_CONSTRAINT_PROMPT },
+            { role: "user", content: text },
+        ];
+        const response = await this.callModel(messages);
+        try {
+            return JSON.parse(this.stripMarkdown(response));
+        } catch (error) {
+            console.warn("[LLM] extractStackConstraint: non-JSON response, skipping");
+            return null;
+        }
+    }
+
     private async extractDeliveryConstraint(text: string): Promise<{ direction: string; points: number } | null> {
         const messages = [
             { role: "system", content: prompts.DELIVERY_CONSTRAINT_PROMPT },
@@ -157,7 +174,7 @@ export class LLMClient {
         }
     }
 
-    private async generateDesire(text: string): Promise<{ action: string; x: number; y: number; points: number } | null> {
+    private async generateDesire(text: string): Promise<{ action: string; x: number; y: number; points: number; multiplier: number } | null> {
         const messages = [
             { role: "system", content: prompts.DESIRE_GENERATION_PROMPT },
             { role: "user", content: text },
@@ -191,7 +208,7 @@ export class LLMClient {
     // ---- Main listener ----
 
     async processMessage(msg: string, agent_position: any): Promise<{ reply: string; updates: LLMUpdate }> {
-        const EMPTY: { reply: string; updates: LLMUpdate } = { reply: "", updates: { goToTiles: [], blockedTiles: [], deliveryConstraints: [] } };
+        const EMPTY: { reply: string; updates: LLMUpdate } = { reply: "", updates: { goToTiles: [], blockedTiles: [], deliveryConstraints: [], deliveryBonusTiles: [], blockedDeliveryTiles: [], stackConstraints: [] } };
 
         if (msg.trim() === "") {
             return EMPTY;
@@ -211,7 +228,7 @@ export class LLMClient {
         // Step 2: Split into sub-requests and dispatch each one
         const msgs: Array<string> = await this.splitMessage(cleanMsg);
         let replyText = "";
-        const updates: LLMUpdate = { goToTiles: [], blockedTiles: [], deliveryConstraints: [] };
+        const updates: LLMUpdate = { goToTiles: [], blockedTiles: [], deliveryConstraints: [], deliveryBonusTiles: [], blockedDeliveryTiles: [], stackConstraints: [] };
 
         for (const subMsg of msgs) {
             const action = await this.decideNextAction(subMsg);
@@ -232,7 +249,19 @@ export class LLMClient {
             } else if (action === "generate_desire") {
                 const desire = await this.generateDesire(subMsg);
                 if (desire) {
-                    if (desire.action === "avoid" || desire.points < 0) {
+                    if (desire.action === "avoid") {
+                        updates.blockedTiles.push(`${desire.x},${desire.y}`);
+                    } else if (desire.action === "go_to") {
+                        updates.goToTiles.push({ x: desire.x, y: desire.y, utility: desire.points });
+                    } else if (desire.action === "go_delivery") {
+                        const key = `${desire.x},${desire.y}`;
+                        updates.blockedDeliveryTiles = updates.blockedDeliveryTiles.filter(k => k !== key);
+                        updates.deliveryBonusTiles.push({ x: desire.x, y: desire.y, multiplier: desire.multiplier ?? 1 });
+                    } else if (desire.action === "avoid_delivery") {
+                        const key = `${desire.x},${desire.y}`;
+                        updates.deliveryBonusTiles = updates.deliveryBonusTiles.filter(b => `${b.x},${b.y}` !== key);
+                        updates.blockedDeliveryTiles.push(key);
+                    } else if (desire.points < 0) {
                         updates.blockedTiles.push(`${desire.x},${desire.y}`);
                     } else {
                         updates.goToTiles.push({ x: desire.x, y: desire.y, utility: desire.points });
@@ -243,8 +272,17 @@ export class LLMClient {
                 if (constraint) {
                     updates.deliveryConstraints.push(constraint);
                 }
+            } else if (action === "generate_stack_constraint") {
+                const constraint = await this.extractStackConstraint(subMsg);
+                if (constraint) {
+                    updates.stackConstraints.push(constraint);
+                }
             }
         }
+        // If a tile is registered as a delivery bonus, drop any go_to mission for the same tile
+        const bonusKeys = new Set(updates.deliveryBonusTiles.map(b => `${b.x},${b.y}`));
+        updates.goToTiles = updates.goToTiles.filter(t => !bonusKeys.has(`${t.x},${t.y}`));
+
         this.clearMemory();
         return { reply: replyText.trim(), updates };
     }

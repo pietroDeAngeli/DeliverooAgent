@@ -1,0 +1,204 @@
+[
+  {
+    "id": 1,
+    "description": "Go to tile with positive points → go_to",
+    "input": "Go to tile (4, 5) for +10 pts",
+    "expected_action": "go_to",
+    "expected_x": 4,
+    "expected_y": 5
+  },
+  {
+    "id": 2,
+    "description": "Avoid tile with explicit negative points → avoid",
+    "input": "Avoid tile (1, 1), penalty -20pts",
+    "expected_action": "avoid",
+    "expected_x": 1,
+    "expected_y": 1,
+    "expected_points_negative": true
+  },
+  {
+    "id": 3,
+    "description": "Traversal penalty (do not go through) → avoid",
+    "input": "Do not go through tile (2, 3) otherwise you lose 50pts",
+    "expected_action": "avoid",
+    "expected_x": 2,
+    "expected_y": 3,
+    "expected_points_negative": true
+  },
+  {
+    "id": 4,
+    "description": "Traversal penalty phrased as walking cost → avoid",
+    "input": "Tile (5, 5) costs you 50 points if you walk through it",
+    "expected_action": "avoid",
+    "expected_x": 5,
+    "expected_y": 5,
+    "expected_points_negative": true
+  },
+  {
+    "id": 5,
+    "description": "Delivery bonus 5x → go_delivery with multiplier",
+    "input": "Every time you deliver in (3, 4) you get 5x pts",
+    "expected_action": "go_delivery",
+    "expected_x": 3,
+    "expected_y": 4,
+    "expected_multiplier": 5
+  },
+  {
+    "id": 6,
+    "description": "Delivery bonus 3x at different tile → go_delivery with multiplier",
+    "input": "Delivering at (0, 7) gives you 3x the normal reward",
+    "expected_action": "go_delivery",
+    "expected_x": 0,
+    "expected_y": 7,
+    "expected_multiplier": 3
+  },
+  {
+    "id": 7,
+    "description": "Zero-point delivery tile → avoid_delivery",
+    "input": "Every time you deliver in (1, 2) you get 0 pts",
+    "expected_action": "avoid_delivery",
+    "expected_x": 1,
+    "expected_y": 2
+  },
+  {
+    "id": 8,
+    "description": "Delivery tile yields nothing → avoid_delivery",
+    "input": "Dropping packages at (4, 4) gives no points at all",
+    "expected_action": "avoid_delivery",
+    "expected_x": 4,
+    "expected_y": 4
+  },
+  {
+    "id": 9,
+    "description": "Italian: go to tile → go_to",
+    "input": "Vai alla casella (6, 2) per +15 punti",
+    "expected_action": "go_to",
+    "expected_x": 6,
+    "expected_y": 2
+  },
+  {
+    "id": 10,
+    "description": "Italian: traversal penalty → avoid",
+    "input": "Non passare per la casella (2, 2), perdi 50 punti",
+    "expected_action": "avoid",
+    "expected_x": 2,
+    "expected_y": 2,
+    "expected_points_negative": true
+  },
+  {
+    "id": 11,
+    "description": "Italian: delivery bonus → go_delivery",
+    "input": "Ogni volta che consegni in (3, 4) ottieni 5x punti",
+    "expected_action": "go_delivery",
+    "expected_x": 3,
+    "expected_y": 4,
+    "expected_multiplier": 5
+  },
+  {
+    "id": 12,
+    "description": "Negative traversal phrased as avoidance with explicit loss → avoid",
+    "input": "Steer clear of (7, 1) or you lose 50 points",
+    "expected_action": "avoid",
+    "expected_x": 7,
+    "expected_y": 1,
+    "expected_points_negative": true
+  },
+  {
+    "id": 13,
+    "description": "x0 multiplier phrasing (admin style) → avoid_delivery",
+    "input": "delivery tile 6,13 gives x0 points",
+    "expected_action": "avoid_delivery",
+    "expected_x": 6,
+    "expected_y": 13,
+    "expected_multiplier": 0
+  },
+  {
+    "id": 14,
+    "description": "x0.5 sub-1 multiplier → avoid_delivery",
+    "input": "delivery tile 4,7 gives x0.5 points",
+    "expected_action": "avoid_delivery",
+    "expected_x": 4,
+    "expected_y": 7,
+    "expected_multiplier": 0.5
+  },
+  {
+    "id": 15,
+    "description": "Fractional reward phrasing (0.3 of standard) → avoid_delivery",
+    "input": "delivering to tile (2, 8) gives you 0.3 of the standard reward",
+    "expected_action": "avoid_delivery",
+    "expected_x": 2,
+    "expected_y": 8,
+    "expected_multiplier": 0.3
+  },
+  {
+    "id": 16,
+    "description": "High bonus multiplier x200 → go_delivery",
+    "input": "delivery tile 2,13 gives x200 of the reward",
+    "expected_action": "go_delivery",
+    "expected_x": 2,
+    "expected_y": 13,
+    "expected_multiplier": 200
+  },
+  {
+    "id": 17,
+    "description": "High bonus multiplier x100 → go_delivery",
+    "input": "delivery tile 2,13 gives x100 points",
+    "expected_action": "go_delivery",
+    "expected_x": 2,
+    "expected_y": 13,
+    "expected_multiplier": 100
+  },
+  {
+    "id": 18,
+    "description": "Italian: x0 delivery → avoid_delivery",
+    "input": "Ogni volta che consegni in (6, 13) ottieni 0 punti",
+    "expected_action": "avoid_delivery",
+    "expected_x": 6,
+    "expected_y": 13,
+    "expected_multiplier": 0
+  },
+  {
+    "id": 19,
+    "description": "Percentage fraction below 1 (30% of reward) → avoid_delivery",
+    "input": "Tile (5, 9) gives you only 30% of the normal reward when delivering",
+    "expected_action": "avoid_delivery",
+    "expected_x": 5,
+    "expected_y": 9
+  },
+  {
+    "id": 20,
+    "description": "Challenge: 'triple reward' delivery phrasing → go_delivery multiplier 3",
+    "input": "deliverying in 2,13 gives triple the reward",
+    "expected_action": "go_delivery",
+    "expected_x": 2,
+    "expected_y": 13,
+    "expected_multiplier": 3
+  },
+  {
+    "id": 21,
+    "description": "Challenge: single-tile sub-message after split → go_delivery 5x",
+    "input": "Every time you deliver in (3, 4) you get 5x pts than in a regular delivery tile",
+    "expected_action": "go_delivery",
+    "expected_x": 3,
+    "expected_y": 4,
+    "expected_multiplier": 5
+  },
+  {
+    "id": 22,
+    "description": "Second tile sub-message after split → go_delivery 5x",
+    "input": "Every time you deliver in (5, 6) you get 5x pts than in a regular delivery tile",
+    "expected_action": "go_delivery",
+    "expected_x": 5,
+    "expected_y": 6,
+    "expected_multiplier": 5
+  },
+  {
+    "id": 23,
+    "description": "Challenge: traversal penalty phrasing → avoid with negative points",
+    "input": "Do not go through tile (3, 7) otherwise you lose 50pts",
+    "expected_action": "avoid",
+    "expected_x": 3,
+    "expected_y": 7,
+    "expected_points_negative": true
+  }
+]

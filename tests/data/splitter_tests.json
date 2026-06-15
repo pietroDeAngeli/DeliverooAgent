@@ -173,5 +173,77 @@
     "input": "Avoid tile (9,9) penalty -20pts",
     "expected_count": 1,
     "keywords_in_any": ["9,9"]
+  },
+  {
+    "id": 26,
+    "description": "Traversal penalty stays as one",
+    "input": "Do not go through tile (2, 3) otherwise you lose 50pts",
+    "expected_count": 1,
+    "keywords_in_any": ["2"]
+  },
+  {
+    "id": 27,
+    "description": "Delivery bonus stays as one",
+    "input": "Every time you deliver in (3, 4) you get 5x pts",
+    "expected_count": 1,
+    "keywords_in_any": ["3"]
+  },
+  {
+    "id": 28,
+    "description": "Two bonus delivery tiles split into two, each sub-message keeps the bonus",
+    "input": "Every time you deliver in (3, 4) or (2, 1) you get 5x pts",
+    "expected_count": 2,
+    "keywords_in_any": ["3", "2"],
+    "keywords_in_each": ["5x"]
+  },
+  {
+    "id": 29,
+    "description": "Traversal penalty + delivery bonus split",
+    "input": "Do not go through tile (5, 5) and deliver in (3, 4) for 5x pts",
+    "expected_count": 2,
+    "keywords_in_any": ["5,5", "3"]
+  },
+  {
+    "id": 30,
+    "description": "Zero-point delivery tile stays as one",
+    "input": "Every time you deliver in (1, 2) you get 0 pts",
+    "expected_count": 1,
+    "keywords_in_any": ["1"]
+  },
+  {
+    "id": 31,
+    "description": "Delivery tile + reward word is NOT split (the bug fix case)",
+    "input": "deliverying in 2,13 gives triple the reward",
+    "expected_count": 1,
+    "keywords_in_any": ["2"]
+  },
+  {
+    "id": 32,
+    "description": "Challenge query: multi-tile 5x bonus split with bonus context in each part",
+    "input": "Every time you deliver in (3, 4) or (5, 6) you get 5x pts than in a regular delivery tile",
+    "expected_count": 2,
+    "keywords_in_any": ["3", "5"],
+    "keywords_in_each": ["5x"]
+  },
+  {
+    "id": 33,
+    "description": "Challenge query: stack constraint stays as one item",
+    "input": "Deliver stacks of exactly 3 parcels at a time to double the reward",
+    "expected_count": 1,
+    "keywords_in_any": ["3"]
+  },
+  {
+    "id": 34,
+    "description": "Challenge query: stack constraint with sub-1 multiplier stays as one item",
+    "input": "Deliver stacks of exactly 5 parcels at a time to get 0.3 of the standard reward",
+    "expected_count": 1,
+    "keywords_in_any": ["5"]
+  },
+  {
+    "id": 35,
+    "description": "Challenge query: traversal penalty (challenge phrasing) stays as one",
+    "input": "Do not go through tile (3, 7) otherwise you lose 50pts",
+    "expected_count": 1,
+    "keywords_in_any": ["3"]
   }
 ]

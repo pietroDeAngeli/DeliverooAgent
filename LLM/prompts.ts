@@ -6,15 +6,17 @@ Tool Usage Rules:
 4. **generate_desire**: set a movement goal — navigate TO or AVOID a specific tile identified by coordinates like (x, y). Use this whenever the instruction is about where the agent should or should not MOVE.
 5. **common_knowledge**: answer a general factual question unrelated to the game (history, science, geography, trivia, etc.).
 6. **generate_delivery_constraint**: set a delivery preference about WHERE to DROP packages, expressed as a DIRECTION (leftmost / rightmost / topmost / bottommost). Only use this for drop-off zone instructions, never for movement goals.
+7. **generate_stack_constraint**: set a delivery reward rule based on HOW MANY parcels are carried at delivery time (e.g. "exactly 3 parcels → double reward", "exactly 5 → 0.3x"). Only use when the instruction specifies a parcel COUNT that affects the delivery multiplier.
 
 Key distinctions:
 - Any request with a specific coordinate (x, y) and movement/avoidance → **generate_desire**
 - Any request about delivery direction (leftmost/rightmost/topmost/bottommost) → **generate_delivery_constraint**
+- Any request about delivering a specific NUMBER/COUNT of parcels for a reward multiplier → **generate_stack_constraint**
 - Any general factual question (capitals, history, science) → **common_knowledge**
 - Any numerical expression to compute → **calculate**
-`; 
+`;
 
-export const ACTIONS: string[] = ["calculate", "get_current_time", "get_my_position", "generate_desire", "common_knowledge", "generate_delivery_constraint"];
+export const ACTIONS: string[] = ["calculate", "get_current_time", "get_my_position", "generate_desire", "common_knowledge", "generate_delivery_constraint", "generate_stack_constraint"];
 
 export const SPLITTER_PROMPT = `
 You are a request splitter.
@@ -42,6 +44,8 @@ Rules:
 - Keep coordinates, formulas, scores, quantities, and goals attached to the action they modify.
 - Phrases like "to get +10pts", "for 5 points", "with speed 2", or "using X" are modifiers, not separate requests.
 - CRITICAL: If two parts of the message are semantically dependent (answering one requires knowing the answer to the other), do NOT split them — keep them as a single request.
+- CRITICAL: A delivery tile and its reward multiplier are semantically inseparable — NEVER split them into separate sub-requests.
+- SPECIAL CASE: If a single delivery reward applies to MULTIPLE tiles (e.g. "deliver in (x1,y1) or (x2,y2) for Nx reward"), split by tile but include the full reward in EACH sub-request.
 
 Examples:
 Message: "Go to tile (3,4) to get +10pts and tell me the current time in London"
@@ -58,6 +62,15 @@ Answer: ["What is the first letter of the capital of Italy?"]
 
 Message: "How many letters does the capital of France have?"
 Answer: ["How many letters does the capital of France have?"]
+
+Message: "deliverying in 2,13 gives triple the reward"
+Answer: ["deliverying in 2,13 gives triple the reward"]
+
+Message: "Every time you deliver in (3,4) or (5,6) you get 5x pts"
+Answer: ["Every time you deliver in (3,4) you get 5x pts", "Every time you deliver in (5,6) you get 5x pts"]
+
+Message: "Delivering to (1,2) or (3,4) gives 0 pts"
+Answer: ["Delivering to (1,2) gives 0 pts", "Delivering to (3,4) gives 0 pts"]
 `.trim();
 
 export const ORCHESTRATOR_PROMPT = `
@@ -84,10 +97,16 @@ User: "Who invented the radio?"    → common_knowledge
 User: "What is the capital of Germany?" → common_knowledge
 User: "Go to tile (3, 4)"          → generate_desire
 User: "Avoid tile (2, 2)"          → generate_desire
+User: "Do not go through tile (1, 1), you lose 50pts" → generate_desire
+User: "Deliver in (3, 4) for 5x points" → generate_desire
+User: "Delivering in (2, 2) gives 0 pts" → generate_desire
 User: "Drop in leftmost tile for +5 pts" → generate_delivery_constraint
 User: "Do not deliver to rightmost tile" → generate_delivery_constraint
 User: "What time is it in Rome?"   → get_current_time
 User: "Where am I?"                → get_my_position
+User: "Deliver stacks of exactly 3 parcels to double the reward" → generate_stack_constraint
+User: "Exactly 5 parcels at once gives 0.3 of the standard reward" → generate_stack_constraint
+User: "Delivering 4 or more parcels gives 1.5x" → generate_stack_constraint
 `.trim();
 
 export const GET_CITY_PROMPT = `You are a helpful assistant that extracts city names from user input.
@@ -147,6 +166,18 @@ Rules:
 - If no calculations are needed, return an empty "calculations" array and the original message.
 - Return ONLY valid JSON. Do not wrap the response in markdown blocks.
 - Do not evaluate expressions, just identify them.
+- CRITICAL: "Nx" used as a multiplier suffix (e.g. "5x punti", "2x points", "3x reward") is NOT a math expression. Do NOT extract it.
+- Only extract expressions that contain operators (+, -, *, /, ^) or function calls, or standalone numeric values that need computing.
+
+Examples:
+Message: "Move to x=4*2 y=(1+3)*3"
+Answer: {"calculations": [{"expr": "4*2", "placeholder": "X1"}, {"expr": "(1+3)*3", "placeholder": "X2"}], "cleanMessage": "Move to x=X1 y=X2"}
+
+Message: "Ogni volta che consegni in (3, 4) ottieni 5x punti"
+Answer: {"calculations": [], "cleanMessage": "Ogni volta che consegni in (3, 4) ottieni 5x punti"}
+
+Message: "Go to tile (2, 3) for 2x reward"
+Answer: {"calculations": [], "cleanMessage": "Go to tile (2, 3) for 2x reward"}
 `.trim();
 
 export const DELIVERY_CONSTRAINT_PROMPT = `
@@ -170,21 +201,90 @@ Rules:
 export const DESIRE_GENERATION_PROMPT = `
 You are an assistant that generates desires for a DeliverooJS agent.
 
-Given an instruction about movement or location, extract the structured desire.
+Given an instruction about movement, location, or delivery preference, extract the structured desire.
 
 Return a JSON object:
 {
-  "action": "go_to" | "avoid",
+  "action": "go_to" | "avoid" | "go_delivery" | "avoid_delivery",
   "x": number,
   "y": number,
-  "points": number
+  "points": number,
+  "multiplier": number
 }
 
 Rules:
-- Use "go_to" when the agent should move to that tile (positive points)
-- Use "avoid" when the agent should NOT go to that tile (negative points or explicit avoidance)
+- "go_to": agent should move to that tile (non-delivery goal, positive points)
+- "avoid": agent must NOT traverse that tile (traversal penalty, negative points)
+- "go_delivery": that tile gives a bonus reward when delivering; multiplier = reward factor (e.g. 5 for 5x, 1 for normal)
+- "avoid_delivery": that tile gives zero or negative reward on delivery; block it as a delivery target only
 - Coordinates are already resolved numbers, extract them directly
 - Extract the points value as a number (negative if losing points)
-- If points are negative, use "avoid"
+- If points are negative and the instruction is about traversal/movement → "avoid"
+- If the instruction is about delivery reward at a specific tile → "go_delivery" or "avoid_delivery"
+- A multiplier > 1 ALWAYS means "go_delivery", never "avoid_delivery"
+- A multiplier < 1 (including 0) ALWAYS means "avoid_delivery", never "go_delivery"
+- Words like "ottieni", "get", "earn", "bonus", "gain" signal a positive reward → "go_delivery"
+- Words like "zero", "0 pts", "no reward", "blocked", "half", "reduced", or fractions like "0.3 of", "30% of", "a third of" signal a sub-1 multiplier → "avoid_delivery"
+- Set multiplier to 1 if not specified or not relevant; multiplier = 1 with no bonus/penalty → "go_to", not "go_delivery"
 - Return valid JSON only, no markdown, no explanation
+
+Examples:
+Input: "Deliver in (3, 4) for 5x points"
+Output: {"action": "go_delivery", "x": 3, "y": 4, "points": 0, "multiplier": 5}
+
+Input: "Delivering in (2, 2) gives 0 pts"
+Output: {"action": "avoid_delivery", "x": 2, "y": 2, "points": 0, "multiplier": 0}
+
+Input: "Ogni volta che consegni in (3, 4) ottieni 5x punti"
+Output: {"action": "go_delivery", "x": 3, "y": 4, "points": 0, "multiplier": 5}
+
+Input: "Do not deliver to tile (1, 5)"
+Output: {"action": "avoid_delivery", "x": 1, "y": 5, "points": 0, "multiplier": 0}
+
+Input: "delivery tile 6, 13 gives x0 points"
+Output: {"action": "avoid_delivery", "x": 6, "y": 13, "points": 0, "multiplier": 0}
+
+Input: "delivery tile 4, 7 gives x0.5 points"
+Output: {"action": "avoid_delivery", "x": 4, "y": 7, "points": 0, "multiplier": 0.5}
+
+Input: "delivering to tile (2, 8) gives you 0.3 of the standard reward"
+Output: {"action": "avoid_delivery", "x": 2, "y": 8, "points": 0, "multiplier": 0.3}
+
+Input: "Go to tile (2, 3)"
+Output: {"action": "go_to", "x": 2, "y": 3, "points": 10, "multiplier": 1}
+
+Input: "Avoid tile (0, 1) you lose 50pts"
+Output: {"action": "avoid", "x": 0, "y": 1, "points": -50, "multiplier": 1}
+`.trim();
+
+export const STACK_CONSTRAINT_PROMPT = `
+You are an assistant that extracts parcel stack size delivery constraints for a DeliverooJS agent.
+
+Given an instruction about delivering a specific number of parcels at once and the reward multiplier that applies, extract the structured constraint.
+
+Return a JSON object:
+{
+  "count": number,
+  "operator": "equals" | "at_least" | "at_most",
+  "multiplier": number
+}
+
+Rules:
+- count: the number of parcels in the stack
+- operator: "equals" for "exactly N", "at_least" for "N or more / at least N", "at_most" for "N or fewer / at most N"
+- multiplier: the reward factor (2 for "double", 0.5 for "half", 0.3 for "0.3 of standard", 0 for "no reward")
+- Return valid JSON only, no markdown, no explanation
+
+Examples:
+Input: "Deliver stacks of exactly 3 parcels at a time to double the reward"
+Output: {"count": 3, "operator": "equals", "multiplier": 2}
+
+Input: "Deliver stacks of exactly 5 parcels at a time to get 0.3 of the standard reward"
+Output: {"count": 5, "operator": "equals", "multiplier": 0.3}
+
+Input: "Delivering 4 or more parcels at once gives you 1.5x the reward"
+Output: {"count": 4, "operator": "at_least", "multiplier": 1.5}
+
+Input: "Delivering at most 2 parcels cuts the reward in half"
+Output: {"count": 2, "operator": "at_most", "multiplier": 0.5}
 `.trim();

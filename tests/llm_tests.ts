@@ -118,9 +118,13 @@ function makeTestable(client: LLMClient) {
         extractAction: (text: string): Promise<string> => c.extractAction(text),
         extractCityName: (text: string): Promise<string> => c.extractCityName(text),
         extractMathExpression: (text: string): Promise<string> => c.extractMathExpression(text),
-        planTasks: (msg: string): Promise<{ calculations: any[]; cleanMessage: string }> => c.planTasks(msg),
+        planTasks: (msg: string): Promise<{ calculations: any[]; cleanMessage: string }> => c.mathExtractor(msg),
         extractDeliveryConstraint: (text: string): Promise<{ direction: string; points: number } | null> =>
             c.extractDeliveryConstraint(text),
+        generateDesire: (text: string): Promise<{ action: string; x: number; y: number; points: number; multiplier: number } | null> =>
+            c.generateDesire(text),
+        extractStackConstraint: (text: string): Promise<{ count: number; operator: string; multiplier: number } | null> =>
+            c.extractStackConstraint(text),
         decideNextAction: (userInput: string): Promise<string> => c.decideNextAction(userInput),
     };
 }
@@ -178,7 +182,12 @@ async function runSplitterTests(client: TestableClient): Promise<CategoryResult>
             const allKeywordsFound = keywords.every((kw: string) =>
                 result.some((item) => item.toLowerCase().includes(kw.toLowerCase()))
             );
-            passed = countOk && allKeywordsFound;
+            // keywords_in_each: every sub-message must contain every listed keyword
+            const eachKeywords: string[] = t.keywords_in_each ?? [];
+            const eachOk = eachKeywords.length === 0 || result.every((item) =>
+                eachKeywords.every((kw: string) => item.toLowerCase().includes(kw.toLowerCase()))
+            );
+            passed = countOk && allKeywordsFound && eachOk;
         } catch (e) {
             error = String(e);
         }
@@ -370,7 +379,89 @@ async function runDecideActionTests(client: TestableClient): Promise<CategoryRes
     return buildResult("decideNextAction", details, totalLatency);
 }
 
-/** 8 – tools (calculate, getCurrentTime, getMyPosition) */
+/** 8 – generateDesire (LLM) */
+async function runGenerateDesireTests(client: TestableClient): Promise<CategoryResult> {
+    const tests: any[] = loadJson("generate_desire_tests.json");
+    const details: TestDetail[] = [];
+    let totalLatency = 0;
+
+    for (const t of tests) {
+        const start = Date.now();
+        let actual = "";
+        let passed = false;
+        let error: string | undefined;
+        try {
+            const result = await client.generateDesire(t.input as string);
+            actual = JSON.stringify(result);
+
+            if (result === null) {
+                passed = false;
+            } else {
+                const actionOk = result.action === t.expected_action;
+                const xOk = t.expected_x !== undefined ? result.x === t.expected_x : true;
+                const yOk = t.expected_y !== undefined ? result.y === t.expected_y : true;
+                const pointsOk =
+                    t.expected_points !== undefined ? result.points === t.expected_points
+                    : t.expected_points_negative === true ? result.points < 0
+                    : true;
+                const multiplierOk = t.expected_multiplier !== undefined
+                    ? result.multiplier === t.expected_multiplier
+                    : true;
+                passed = actionOk && xOk && yOk && pointsOk && multiplierOk;
+            }
+        } catch (e) {
+            error = String(e);
+        }
+        const latencyMs = elapsed(start);
+        totalLatency += latencyMs;
+        const expectedPreview =
+            `action=${t.expected_action} x=${t.expected_x ?? "?"} y=${t.expected_y ?? "?"}` +
+            (t.expected_multiplier !== undefined ? ` mult=${t.expected_multiplier}` : "") +
+            (t.expected_points_negative ? " pts<0" : "");
+        const detail: TestDetail = { id: t.id, description: t.description, passed, latencyMs, actual, error };
+        details.push(detail);
+        printTestLine(detail, String(t.input), expectedPreview);
+    }
+    return buildResult("generateDesire", details, totalLatency);
+}
+
+/** 9 – extractStackConstraint (LLM) */
+async function runStackConstraintTests(client: TestableClient): Promise<CategoryResult> {
+    const tests: any[] = loadJson("stack_constraint_tests.json");
+    const details: TestDetail[] = [];
+    let totalLatency = 0;
+
+    for (const t of tests) {
+        const start = Date.now();
+        let actual = "";
+        let passed = false;
+        let error: string | undefined;
+        try {
+            const result = await client.extractStackConstraint(t.input as string);
+            actual = JSON.stringify(result);
+
+            if (result === null) {
+                passed = false;
+            } else {
+                const countOk = t.expected_count !== undefined ? result.count === t.expected_count : true;
+                const operatorOk = t.expected_operator !== undefined ? result.operator === t.expected_operator : true;
+                const multiplierOk = t.expected_multiplier !== undefined ? result.multiplier === t.expected_multiplier : true;
+                passed = countOk && operatorOk && multiplierOk;
+            }
+        } catch (e) {
+            error = String(e);
+        }
+        const latencyMs = elapsed(start);
+        totalLatency += latencyMs;
+        const expectedPreview = `count=${t.expected_count ?? "?"} op=${t.expected_operator ?? "?"} mult=${t.expected_multiplier ?? "?"}`;
+        const detail: TestDetail = { id: t.id, description: t.description, passed, latencyMs, actual, error };
+        details.push(detail);
+        printTestLine(detail, String(t.input), expectedPreview);
+    }
+    return buildResult("extractStackConstraint", details, totalLatency);
+}
+
+/** 10 – tools (calculate, getCurrentTime, getMyPosition) */
 async function runToolsTests(): Promise<CategoryResult> {
     const data: any = loadJson("tools_tests.json");
     const details: TestDetail[] = [];
@@ -573,6 +664,8 @@ const CATEGORY_FILE: Record<string, string> = {
     extractMathExpression: "math_expression_tests.json",
     planTasks: "plan_tasks_tests.json",
     extractDeliveryConstraint: "delivery_constraint_tests.json",
+    generateDesire: "generate_desire_tests.json",
+    extractStackConstraint: "stack_constraint_tests.json",
     decideNextAction: "decide_action_tests.json",
 };
 
@@ -661,11 +754,11 @@ async function main(): Promise<void> {
     const results: CategoryResult[] = [];
 
     // Deterministic tests — always run
-    console.log(color("[1/8]", ANSI.bold) + " extractAction (deterministic)");
+    console.log(color("[1/10]", ANSI.bold) + " extractAction (deterministic)");
     const clientForAction = makeTestable(new LLMClient());
     results.push(await runActionExtractionTests(clientForAction));
 
-    console.log(color("[2/8]", ANSI.bold) + " tools (calculate / getCurrentTime / getMyPosition)");
+    console.log(color("[2/10]", ANSI.bold) + " tools (calculate / getCurrentTime / getMyPosition)");
     results.push(await runToolsTests());
 
     // LLM-backed tests — skip if SKIP_LIVE=true
@@ -674,22 +767,28 @@ async function main(): Promise<void> {
     } else {
         const client = makeTestable(new LLMClient());
 
-        console.log(color("[3/8]", ANSI.bold) + " splitMessage");
+        console.log(color("[3/10]", ANSI.bold) + " splitMessage");
         results.push(await runSplitterTests(client));
 
-        console.log(color("[4/8]", ANSI.bold) + " extractCityName");
+        console.log(color("[4/10]", ANSI.bold) + " extractCityName");
         results.push(await runCityNameTests(client));
 
-        console.log(color("[5/8]", ANSI.bold) + " extractMathExpression");
+        console.log(color("[5/10]", ANSI.bold) + " extractMathExpression");
         results.push(await runMathExpressionTests(client));
 
-        console.log(color("[6/8]", ANSI.bold) + " planTasks");
+        console.log(color("[6/10]", ANSI.bold) + " planTasks");
         results.push(await runPlanTasksTests(client));
 
-        console.log(color("[7/8]", ANSI.bold) + " extractDeliveryConstraint");
+        console.log(color("[7/10]", ANSI.bold) + " extractDeliveryConstraint");
         results.push(await runDeliveryConstraintTests(client));
 
-        console.log(color("[8/8]", ANSI.bold) + " decideNextAction");
+        console.log(color("[8/10]", ANSI.bold) + " generateDesire");
+        results.push(await runGenerateDesireTests(client));
+
+        console.log(color("[9/10]", ANSI.bold) + " extractStackConstraint");
+        results.push(await runStackConstraintTests(client));
+
+        console.log(color("[10/10]", ANSI.bold) + " decideNextAction");
         results.push(await runDecideActionTests(client));
     }
 

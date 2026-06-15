@@ -195,5 +195,41 @@
     "expected_calc_count": 2,
     "expected_out": [10, 4],
     "clean_message_contains_placeholder": true
+  },
+  {
+    "id": 26,
+    "description": "Italian 5x multiplier suffix must not be extracted as math",
+    "input": "Ogni volta che consegni in (3, 4) ottieni 5x punti",
+    "expected_calc_count": 0,
+    "clean_message_no_original_expr": "X1"
+  },
+  {
+    "id": 27,
+    "description": "English 2x reward suffix must not be extracted as math",
+    "input": "Go to tile (2, 3) for 2x reward",
+    "expected_calc_count": 0,
+    "clean_message_no_original_expr": "X1"
+  },
+  {
+    "id": 28,
+    "description": "English 5x points suffix must not be extracted as math",
+    "input": "Deliver in (3, 4) for 5x points",
+    "expected_calc_count": 0,
+    "clean_message_no_original_expr": "X1"
+  },
+  {
+    "id": 29,
+    "description": "Real math expression extracted but Nx multiplier suffix left intact",
+    "input": "Go to x=2+3 for 5x points",
+    "expected_calc_count": 1,
+    "expected_expressions_contain": ["2+3"],
+    "clean_message_no_original_expr": "5x"
+  },
+  {
+    "id": 30,
+    "description": "Italian 10x multiplier suffix must not be extracted as math",
+    "input": "Consegna in (1, 2) per 10x punti",
+    "expected_calc_count": 0,
+    "clean_message_no_original_expr": "X1"
   }
 ]
