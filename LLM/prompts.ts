@@ -7,6 +7,7 @@ Tool Usage Rules:
 5. **common_knowledge**: answer a general factual question unrelated to the game (history, science, geography, trivia, etc.).
 6. **generate_delivery_constraint**: set a delivery preference about WHERE to DROP packages, expressed as a DIRECTION (leftmost / rightmost / topmost / bottommost). Only use this for drop-off zone instructions, never for movement goals.
 7. **generate_stack_constraint**: set a delivery reward rule based on HOW MANY parcels are carried at delivery time (e.g. "exactly 3 parcels → double reward", "exactly 5 → 0.3x"). Only use when the instruction specifies a parcel COUNT that affects the delivery multiplier.
+8. **multi_agent_command**: coordinate MULTIPLE agents together — meeting at a location, waiting in a specific row type, or resuming after a hold. Use when the message explicitly involves "both agents", "all agents", "each other", meeting/rendezvous, or signals like "red light / green light", "go", "stop", "resume".
 
 Key distinctions:
 - Any request with a specific coordinate (x, y) and movement/avoidance → **generate_desire**
@@ -14,9 +15,10 @@ Key distinctions:
 - Any request about delivering a specific NUMBER/COUNT of parcels for a reward multiplier → **generate_stack_constraint**
 - Any general factual question (capitals, history, science) → **common_knowledge**
 - Any numerical expression to compute → **calculate**
+- Any coordination between MULTIPLE agents (rendezvous, synchronized wait, resume signal) → **multi_agent_command**
 `;
 
-export const ACTIONS: string[] = ["calculate", "get_current_time", "get_my_position", "generate_desire", "common_knowledge", "generate_delivery_constraint", "generate_stack_constraint"];
+export const ACTIONS: string[] = ["calculate", "get_current_time", "get_my_position", "generate_desire", "common_knowledge", "generate_delivery_constraint", "generate_stack_constraint", "multi_agent_command"];
 
 export const SPLITTER_PROMPT = `
 You are a request splitter.
@@ -107,6 +109,10 @@ User: "Where am I?"                → get_my_position
 User: "Deliver stacks of exactly 3 parcels to double the reward" → generate_stack_constraint
 User: "Exactly 5 parcels at once gives 0.3 of the standard reward" → generate_stack_constraint
 User: "Delivering 4 or more parcels gives 1.5x" → generate_stack_constraint
+User: "Move both agents to the neighborhood of (5,3) within distance 3 and wait for each other" → multi_agent_command
+User: "All agents must move to an odd-numbered row and wait" → multi_agent_command
+User: "You can move again" → multi_agent_command
+User: "Green light, go!" → multi_agent_command
 `.trim();
 
 export const GET_CITY_PROMPT = `You are a helpful assistant that extracts city names from user input.
@@ -255,6 +261,42 @@ Output: {"action": "go_to", "x": 2, "y": 3, "points": 10, "multiplier": 1}
 
 Input: "Avoid tile (0, 1) you lose 50pts"
 Output: {"action": "avoid", "x": 0, "y": 1, "points": -50, "multiplier": 1}
+`.trim();
+
+export const MULTI_AGENT_COMMAND_PROMPT = `
+You are an assistant that extracts multi-agent coordination commands for a DeliverooJS agent.
+
+Given an instruction requiring coordination between multiple agents, extract the command type and parameters.
+
+Return a JSON object:
+{
+  "type": "rendezvous" | "wait_odd_row" | "resume",
+  "x": number,        // only for rendezvous: target x coordinate
+  "y": number,        // only for rendezvous: target y coordinate
+  "maxDist": number   // only for rendezvous: maximum distance from target (default 3)
+}
+
+Rules:
+- "rendezvous": agents must all navigate near a specific tile and wait for each other there
+- "wait_odd_row": agents must move to a tile in an odd-numbered row (y is odd) and stop
+- "resume": agents are allowed to move freely again (clears any wait or rendezvous hold)
+- Return valid JSON only, no markdown, no explanation
+
+Examples:
+Input: "Move both agents to the neighborhood of position (5,3) within a maximum distance of 3"
+Output: {"type": "rendezvous", "x": 5, "y": 3, "maxDist": 3}
+
+Input: "All agents must move to an odd-numbered row and wait"
+Output: {"type": "wait_odd_row"}
+
+Input: "You can move again"
+Output: {"type": "resume"}
+
+Input: "Green light, go!"
+Output: {"type": "resume"}
+
+Input: "Red light — all agents stop on an odd row"
+Output: {"type": "wait_odd_row"}
 `.trim();
 
 export const STACK_CONSTRAINT_PROMPT = `

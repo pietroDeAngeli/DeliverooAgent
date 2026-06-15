@@ -8,7 +8,7 @@ import type { StackConstraint } from "./BDI/Desire.ts";
 import { reviseIntention } from "./BDI/Intentions.ts";
 import * as utils from "./utils.ts";
 import { getPddlPath } from "./pddl_planner.ts";
-import type { LLMClient } from "./LLM/llm.ts";
+import type { LLMClient, LLMUpdate } from "./LLM/llm.ts";
 
 dotenv.config();
 
@@ -16,6 +16,7 @@ const USE_PDDL           = process.env.USE_PDDL === 'true';
 const USE_LLM_ARG        = process.argv.includes('--use-llm');
 const USE_LLM_EFFECTIVE  = USE_LLM_ARG || process.env.USE_LLM === 'true';
 const DEBUG              = process.env.DEBUG === 'true' || process.argv.includes('--debug');
+const IS_MASTER          = process.env.IS_MASTER === 'true';
 
 const tokenArg = process.argv.find(arg => arg.startsWith('--token='));
 const TOKEN              = tokenArg
@@ -26,6 +27,7 @@ const debug = (msg: string) => DEBUG && console.log(msg);
 
 console.log(`[Planner] ${USE_PDDL ? 'PDDL local (Fast Downward)' : 'BFS (default)'}`);
 console.log(`[LLM]     ${USE_LLM_EFFECTIVE ? 'enabled' : 'disabled'}`);
+console.log(`[Role]    ${IS_MASTER ? 'master (processes LLM, forwards to slave)' : 'slave (receives from master)'}`);
 
 const socket = DjsConnect(process.env.HOST as string, TOKEN as string);
 
@@ -66,6 +68,10 @@ const llmDeliveryBonusTiles = new Map<string, number>(); // "x,y" → multiplier
 const llmBlockedDeliveryTiles = new Set<string>();       // delivery target blocked, traversal allowed
 const llmStackConstraints: StackConstraint[] = [];       // stack-size → reward multiplier rules
 
+// ── Multi-agent state ──────────────────────────────────────────────────────────
+let partnerAgentId: string | null = process.env.PARTNER_ID ?? null;
+let rendezvousMaxDist = 3;
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function clearIntention(): void {
@@ -105,6 +111,20 @@ if (USE_LLM_EFFECTIVE) {
     })();
 }
 
+function findNearestOddRowTile(): Position | null {
+    if (!myAgent || !worldMap) return null;
+    let best: Position | null = null;
+    let bestDist = Infinity;
+    for (const key of worldMap.tiles.keys()) {
+        const [x, y] = key.split(',').map(Number);
+        if (y % 2 === 1) {
+            const dist = Math.abs(x - myAgent.pos.x) + Math.abs(y - myAgent.pos.y);
+            if (dist < bestDist) { bestDist = dist; best = { x, y }; }
+        }
+    }
+    return best;
+}
+
 function findDirectionalDeliveryTile(direction: string): { x: number; y: number } | null {
     if (!worldMap) return null;
     const tiles = [...worldMap.tiles.entries()]
@@ -117,6 +137,65 @@ function findDirectionalDeliveryTile(direction: string): { x: number; y: number 
         case 'topmost':   return tiles.reduce((a, b) => a.y < b.y ? a : b);
         case 'bottommost':return tiles.reduce((a, b) => a.y > b.y ? a : b);
         default: return null;
+    }
+}
+
+function applyLLMUpdates(updates: LLMUpdate): void {
+    for (const tile of updates.goToTiles) {
+        console.log(`[LLM] new go_to mission: (${tile.x},${tile.y}) u=${tile.utility}`);
+        llmPendingMissions.push(new Desire("go_to", tile.x, tile.y, tile.utility));
+    }
+    for (const tileKey of updates.blockedTiles) {
+        console.log(`[LLM] blocking tile: ${tileKey}`);
+        llmBlockedTiles.add(tileKey);
+    }
+    for (const bonus of updates.deliveryBonusTiles) {
+        const key = `${bonus.x},${bonus.y}`;
+        llmDeliveryBonusTiles.set(key, bonus.multiplier);
+        console.log(`[LLM] delivery bonus: (${bonus.x},${bonus.y}) x${bonus.multiplier}`);
+    }
+    for (const key of updates.blockedDeliveryTiles) {
+        llmBlockedDeliveryTiles.add(key);
+        console.log(`[LLM] blocked delivery tile: ${key}`);
+    }
+    for (const constraint of updates.deliveryConstraints) {
+        const tile = findDirectionalDeliveryTile(constraint.direction);
+        if (!tile) { console.log(`[LLM] delivery constraint: tile ${constraint.direction} not found`); continue; }
+        if (constraint.points < 0) {
+            console.log(`[LLM] blocking delivery tile (${tile.x},${tile.y}) dir=${constraint.direction}`);
+            llmBlockedTiles.add(`${tile.x},${tile.y}`);
+        } else {
+            console.log(`[LLM] new go_delivery mission: (${tile.x},${tile.y}) dir=${constraint.direction} pts=${constraint.points}`);
+            llmPendingMissions.push(new Desire("go_delivery", tile.x, tile.y, constraint.points));
+        }
+    }
+    for (const constraint of updates.stackConstraints) {
+        const op = constraint.operator as StackConstraint['operator'];
+        const existing = llmStackConstraints.findIndex(c => c.count === constraint.count && c.operator === op);
+        if (existing >= 0) llmStackConstraints[existing] = { count: constraint.count, operator: op, multiplier: constraint.multiplier };
+        else llmStackConstraints.push({ count: constraint.count, operator: op, multiplier: constraint.multiplier });
+        console.log(`[LLM] stack constraint: ${op} ${constraint.count} parcels → x${constraint.multiplier}`);
+    }
+    if (updates.multiAgentCommand) {
+        const cmd = updates.multiAgentCommand;
+        if (cmd.type === 'rendezvous') {
+            rendezvousMaxDist = cmd.maxDist;
+            llmPendingMissions.push(new Desire('rendezvous', cmd.x, cmd.y, 9999));
+            console.log(`[Multi-agent] rendezvous at (${cmd.x},${cmd.y}) maxDist=${rendezvousMaxDist}`);
+        } else if (cmd.type === 'wait_odd_row') {
+            if (llmActiveMission?.type !== 'wait_odd_row' && !llmPendingMissions.some(m => m.type === 'wait_odd_row')) {
+                llmPendingMissions.push(new Desire('wait_odd_row', 0, 0, 9999));
+                console.log('[Multi-agent] wait_odd_row queued');
+            }
+        } else if (cmd.type === 'resume') {
+            if (llmActiveMission?.type === 'wait_odd_row') {
+                llmActiveMission = null;
+                clearIntention();
+                console.log('[Multi-agent] resume: cleared wait_odd_row mission');
+            }
+            const idx = llmPendingMissions.findIndex(m => m.type === 'wait_odd_row');
+            if (idx >= 0) llmPendingMissions.splice(idx, 1);
+        }
     }
 }
 
@@ -277,64 +356,72 @@ socket.onSensing((sensing: any) => {
 });
 
 socket.onMsg( async (id: string, name: string, msg: any, reply: ((response: any) => void) | undefined) => {
-    console.log('IL MESSAGGIO E\' IL SEGUENTE,', id, name, msg);
-    if (useLLM && name === godName) {
-        if (!llm) { console.log("[LLM] client not ready yet, skipping message"); return; }
-
-        console.log(`[LLM] msg from ${name}(${id}): "${msg}"`);
-
-        try {
-            const result = await llm.processMessage(msg, myAgent ? { x: myAgent.pos.x, y: myAgent.pos.y } : null);
-
-            console.log(`[LLM] reply: "${result.reply || "(none)"}"`);
-
-            // Apply desire updates from LLM
-            for (const tile of result.updates.goToTiles) {
-                console.log(`[LLM] new go_to mission: (${tile.x},${tile.y}) u=${tile.utility}`);
-                llmPendingMissions.push(new Desire("go_to", tile.x, tile.y, tile.utility));
-            }
-            for (const tileKey of result.updates.blockedTiles) {
-                console.log(`[LLM] blocking tile: ${tileKey}`);
-                llmBlockedTiles.add(tileKey);
-            }
-            for (const bonus of result.updates.deliveryBonusTiles) {
-                const key = `${bonus.x},${bonus.y}`;
-                llmDeliveryBonusTiles.set(key, bonus.multiplier);
-                console.log(`[LLM] delivery bonus: (${bonus.x},${bonus.y}) x${bonus.multiplier}`);
-            }
-            for (const key of result.updates.blockedDeliveryTiles) {
-                llmBlockedDeliveryTiles.add(key);
-                console.log(`[LLM] blocked delivery tile: ${key}`);
-            }
-            for (const constraint of result.updates.deliveryConstraints) {
-                const tile = findDirectionalDeliveryTile(constraint.direction);
-                if (!tile) { console.log(`[LLM] delivery constraint: tile ${constraint.direction} not found`); continue; }
-                if (constraint.points < 0) {
-                    console.log(`[LLM] blocking delivery tile (${tile.x},${tile.y}) dir=${constraint.direction}`);
-                    llmBlockedTiles.add(`${tile.x},${tile.y}`);
-                } else {
-                    console.log(`[LLM] new go_delivery mission: (${tile.x},${tile.y}) dir=${constraint.direction} pts=${constraint.points}`);
-                    llmPendingMissions.push(new Desire("go_delivery", tile.x, tile.y, constraint.points));
-                }
-            }
-            for (const constraint of result.updates.stackConstraints) {
-                const op = constraint.operator as StackConstraint['operator'];
-                const existing = llmStackConstraints.findIndex(c => c.count === constraint.count && c.operator === op);
-                if (existing >= 0) llmStackConstraints[existing] = { count: constraint.count, operator: op, multiplier: constraint.multiplier };
-                else llmStackConstraints.push({ count: constraint.count, operator: op, multiplier: constraint.multiplier });
-                console.log(`[LLM] stack constraint: ${op} ${constraint.count} parcels → x${constraint.multiplier}`);
-            }
-
-            if (result.reply) {
-                if (reply) {
-                    reply(result.reply);         // emitAsk: risposta diretta al mittente
-                } else {
-                    socket.emitShout(result.reply); // emitSay: broadcast in chat
-                }
-            }
-        } catch (err) {
-            console.error("[LLM] processMessage error (agent continues):", err instanceof Error ? err.message : err);
+    // Peer message from partner agent (JSON with kind: 'LLM_UPDATE')
+    if (name !== godName) {
+        debug(`[Multi-agent] Raw peer message from ${id} (${name}): ${typeof msg} length=${String(msg).length}`);
+        
+        // Auto-discover partner on first non-admin message
+        if (!partnerAgentId) {
+            partnerAgentId = id;
+            console.log(`[Multi-agent] Partner discovered: ${partnerAgentId} (${name})`);
         }
+        
+        if (id === partnerAgentId) {
+            try {
+                const msgStr = typeof msg === 'string' ? msg : JSON.stringify(msg);
+                const peerMsg = JSON.parse(msgStr);
+                debug(`[Multi-agent] Parsed peer message: ${JSON.stringify(peerMsg).substring(0, 100)}`);
+                
+                if (peerMsg.kind === 'LLM_UPDATE') {
+                    console.log('[Multi-agent] Received LLM update from master, applying to BDI');
+                    applyLLMUpdates(peerMsg.updates);
+                } else {
+                    debug(`[Multi-agent] Peer message has unexpected kind: ${peerMsg.kind}`);
+                }
+            } catch (err) {
+                console.warn('[Multi-agent] Failed to parse peer message:', err instanceof Error ? err.message : err);
+                debug(`[Multi-agent] Message was: ${String(msg).substring(0, 200)}`);
+            }
+        } else {
+            debug(`[Multi-agent] Ignoring message from ${id}; expected partner ${partnerAgentId}`);
+        }
+        return;
+    }
+
+    // Admin message — only the master processes via LLM
+    if (!useLLM || !IS_MASTER) return;
+    if (!llm) { console.log("[LLM] client not ready yet, skipping message"); return; }
+
+    console.log(`[LLM] msg from ${name}(${id}): "${msg}"`);
+
+    try {
+        const result = await llm.processMessage(msg, myAgent ? { x: myAgent.pos.x, y: myAgent.pos.y } : null);
+        console.log(`[LLM] reply: "${result.reply || "(none)"}"`);
+
+        applyLLMUpdates(result.updates);
+
+        // Forward processed updates to slave BEFORE calling reply() to avoid socket state issues
+        if (partnerAgentId) {
+            try {
+                await socket.emitSay(partnerAgentId, JSON.stringify({ kind: 'LLM_UPDATE', updates: result.updates }));
+                console.log(`[Multi-agent] Forwarded LLM update to slave ${partnerAgentId}`);
+            } catch (err) {
+                console.warn('[Multi-agent] Failed to forward update to slave:', err instanceof Error ? err.message : err);
+            }
+        } else {
+            console.log('[Multi-agent] No partner known yet — update not forwarded');
+        }
+
+        // Send reply to admin AFTER forwarding to slave
+        if (result.reply) {
+            if (reply) {
+                reply(result.reply);
+            } else {
+                socket.emitShout(result.reply);
+            }
+        }
+    } catch (err) {
+        console.error("[LLM] processMessage error (agent continues):", err instanceof Error ? err.message : err);
     }
 });
 
@@ -595,13 +682,46 @@ async function bdiStep(): Promise<void> {
                 return;
             }
             await stepTowards(currentPath[0], utils.nextPosition(myAgent.pos, currentPath[0]));
+
+        } else if (currentIntention.type === 'rendezvous') {
+            const dist = utils.get_distance(myAgent.pos, { x: currentIntention.x_target, y: currentIntention.y_target });
+            if (dist <= rendezvousMaxDist) {
+                console.log(`[Rendezvous] In range at (${myAgent.pos.x},${myAgent.pos.y}), dist=${dist}`);
+                if (sameMission(currentIntention, llmActiveMission)) completeActiveMission('rendezvous-reached');
+                clearIntention();
+                return;
+            }
+            if (!currentPath?.length)
+                currentPath = await planPath(myAgent.pos, { x: currentIntention.x_target, y: currentIntention.y_target });
+            if (!currentPath?.length) {
+                const failed = currentIntention;
+                handleNoPath(`rendezvous:${currentIntention.x_target},${currentIntention.y_target}`, 'rendezvous target');
+                if (sameMission(failed, llmActiveMission)) completeActiveMission('no-path');
+                return;
+            }
+            await stepTowards(currentPath[0], utils.nextPosition(myAgent.pos, currentPath[0]));
+
+        } else if (currentIntention.type === 'wait_odd_row') {
+            if (myAgent.pos.y % 2 === 1) {
+                // On an odd row — hold position until resume command
+                debug(`[Wait] Holding at odd row y=${myAgent.pos.y}`);
+                return;
+            }
+            // Navigate to nearest odd-row tile
+            const oddTarget = findNearestOddRowTile();
+            if (!oddTarget) { clearIntention(); return; }
+            if (!currentPath?.length)
+                currentPath = await planPath(myAgent.pos, oddTarget);
+            if (!currentPath?.length) { clearIntention(); return; }
+            await stepTowards(currentPath[0], utils.nextPosition(myAgent.pos, currentPath[0]));
         }
 
     } catch (err) {
         console.error(err);
     } finally {
         // Physical stuck detection: block intention if agent held same intention but didn't move
-        if (prevKey && myAgent) {
+        // Skip for wait_odd_row — the agent intentionally holds position on an odd row
+        if (prevKey && myAgent && currentIntention?.type !== 'wait_odd_row') {
             const didMove    = myAgent.pos.x !== prevPos.x || myAgent.pos.y !== prevPos.y;
             const currentKey = currentIntention
                 ? `${currentIntention.type}:${currentIntention.x_target},${currentIntention.y_target}`

@@ -9,7 +9,7 @@
  */
 
 import { exec } from 'child_process';
-import { writeFileSync, readFileSync, existsSync, unlinkSync } from 'fs';
+import { writeFileSync, readFileSync, existsSync, unlinkSync, mkdirSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
@@ -18,16 +18,20 @@ import type { Position, World, Crate } from './BDI/Belief.ts';
 const __dirname   = dirname(fileURLToPath(import.meta.url));
 const PDDL_DIR    = join(__dirname, 'pddl');
 
-// Absolute paths used only for Node.js fs operations
-const DOMAIN_FILE  = join(PDDL_DIR, 'deliveroo-domain.pddl');
-const PROBLEM_FILE = join(PDDL_DIR, 'deliveroo-problem.pddl');
-const PLAN_FILE    = join(PDDL_DIR, 'deliveroo-plan');
+// Each process gets its own subdirectory so concurrent agents don't overwrite
+// each other's problem file, plan file, or Fast Downward's output.sas.
+const INSTANCE_ID   = process.env.AGENT_INSTANCE ?? `pid_${process.pid}`;
+const INSTANCE_DIR  = join(PDDL_DIR, `tmp_${INSTANCE_ID}`);
 
-// Relative paths used in the shell command (cwd = PDDL_DIR).
-const DOWNWARD_REL  = join('..', 'lib', 'downward', 'fast-downward.py');
-const DOMAIN_REL    = 'deliveroo-domain.pddl';
-const PROBLEM_REL   = 'deliveroo-problem.pddl';
-const PLAN_REL      = 'deliveroo-plan';
+// Absolute paths used only for Node.js fs operations
+const DOMAIN_FILE  = join(PDDL_DIR, 'deliveroo-domain.pddl');   // shared read-only
+const PROBLEM_FILE = join(INSTANCE_DIR, 'deliveroo-problem.pddl');
+const PLAN_FILE    = join(INSTANCE_DIR, 'deliveroo-plan');
+
+// Absolute paths for the shell command to avoid cwd-related resolution issues
+const DOWNWARD_PATH = join(__dirname, 'lib', 'downward', 'fast-downward.py');
+const DOMAIN_PATH   = join(PDDL_DIR, 'deliveroo-domain.pddl');
+// PROBLEM_PATH and PLAN_PATH are instance-specific and set in getPddlPath()
 const PYTHON_CMD    = process.env.PYTHON_CMD ?? 'python3';
 
 // Fast Downward writes to fixed paths (output.sas, deliveroo-plan).
@@ -67,6 +71,7 @@ export async function getPddlPath(
     pddlLock = true;
 
     try {
+    mkdirSync(INSTANCE_DIR, { recursive: true });
 
     const { tiles, crates } = worldMap;
 
@@ -145,14 +150,13 @@ export async function getPddlPath(
     if (existsSync(PLAN_FILE)) { try { unlinkSync(PLAN_FILE); } catch {} }
 
     // ── Run Fast Downward ─────────────────────────────────────────────────────
-    // --plan-file is a driver option and MUST come before the domain/problem files.
-    // Use relative paths only: python3 on Windows may be WSL Python, which
-    // cannot parse absolute Windows paths (D:\...).
-    //const cmd = `${PYTHON_CMD} "${DOWNWARD_REL}" --plan-file "${PLAN_REL}" --alias lama-first "${DOMAIN_REL}" "${PROBLEM_REL}"`;
-    const cmd = `${PYTHON_CMD} "${DOWNWARD_REL}" --plan-file "${PLAN_REL}" "${DOMAIN_REL}" "${PROBLEM_REL}" --search "astar(lmcut())"`;
+    // Use absolute paths to avoid cwd-related issues. Fast Downward writes to fixed 
+    // paths (output.sas, deliveroo-plan) relative to where it runs, so this must be
+    // the instance directory. However, passing absolute paths is more reliable.
+    const cmd = `${PYTHON_CMD} "${DOWNWARD_PATH}" --plan-file "${PLAN_FILE}" "${DOMAIN_PATH}" "${PROBLEM_FILE}" --search "astar(lmcut())"`;
 
     await new Promise<void>(resolve => {
-        exec(cmd, { timeout: 15_000, cwd: PDDL_DIR }, (err, _stdout, stderr) => {
+        exec(cmd, { timeout: 15_000, cwd: INSTANCE_DIR }, (err, _stdout, stderr) => {
             // Fast Downward exits 0 = plan found, 11 = unsolvable, 12 = OOM, others = crash.
             // We check the plan file instead of the exit code to handle all cases uniformly.
             if (err && !existsSync(PLAN_FILE)) {
