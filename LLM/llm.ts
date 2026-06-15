@@ -15,6 +15,7 @@ export type LLMUpdate = {
     deliveryConstraints: Array<{ direction: string; points: number }>;
     deliveryBonusTiles: Array<{ x: number; y: number; multiplier: number }>; // "x,y" → multiplier
     blockedDeliveryTiles: string[]; // "x,y" format — delivery target only, not traversal
+    stackConstraints: Array<{ count: number; operator: string; multiplier: number }>;
 };
 
 export class LLMClient {
@@ -145,6 +146,20 @@ export class LLMClient {
         }
     }
 
+    private async extractStackConstraint(text: string): Promise<{ count: number; operator: string; multiplier: number } | null> {
+        const messages = [
+            { role: "system", content: prompts.STACK_CONSTRAINT_PROMPT },
+            { role: "user", content: text },
+        ];
+        const response = await this.callModel(messages);
+        try {
+            return JSON.parse(this.stripMarkdown(response));
+        } catch (error) {
+            console.warn("[LLM] extractStackConstraint: non-JSON response, skipping");
+            return null;
+        }
+    }
+
     private async extractDeliveryConstraint(text: string): Promise<{ direction: string; points: number } | null> {
         const messages = [
             { role: "system", content: prompts.DELIVERY_CONSTRAINT_PROMPT },
@@ -193,7 +208,7 @@ export class LLMClient {
     // ---- Main listener ----
 
     async processMessage(msg: string, agent_position: any): Promise<{ reply: string; updates: LLMUpdate }> {
-        const EMPTY: { reply: string; updates: LLMUpdate } = { reply: "", updates: { goToTiles: [], blockedTiles: [], deliveryConstraints: [], deliveryBonusTiles: [], blockedDeliveryTiles: [] } };
+        const EMPTY: { reply: string; updates: LLMUpdate } = { reply: "", updates: { goToTiles: [], blockedTiles: [], deliveryConstraints: [], deliveryBonusTiles: [], blockedDeliveryTiles: [], stackConstraints: [] } };
 
         if (msg.trim() === "") {
             return EMPTY;
@@ -213,7 +228,7 @@ export class LLMClient {
         // Step 2: Split into sub-requests and dispatch each one
         const msgs: Array<string> = await this.splitMessage(cleanMsg);
         let replyText = "";
-        const updates: LLMUpdate = { goToTiles: [], blockedTiles: [], deliveryConstraints: [], deliveryBonusTiles: [], blockedDeliveryTiles: [] };
+        const updates: LLMUpdate = { goToTiles: [], blockedTiles: [], deliveryConstraints: [], deliveryBonusTiles: [], blockedDeliveryTiles: [], stackConstraints: [] };
 
         for (const subMsg of msgs) {
             const action = await this.decideNextAction(subMsg);
@@ -256,6 +271,11 @@ export class LLMClient {
                 const constraint = await this.extractDeliveryConstraint(subMsg);
                 if (constraint) {
                     updates.deliveryConstraints.push(constraint);
+                }
+            } else if (action === "generate_stack_constraint") {
+                const constraint = await this.extractStackConstraint(subMsg);
+                if (constraint) {
+                    updates.stackConstraints.push(constraint);
                 }
             }
         }

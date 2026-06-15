@@ -6,15 +6,17 @@ Tool Usage Rules:
 4. **generate_desire**: set a movement goal — navigate TO or AVOID a specific tile identified by coordinates like (x, y). Use this whenever the instruction is about where the agent should or should not MOVE.
 5. **common_knowledge**: answer a general factual question unrelated to the game (history, science, geography, trivia, etc.).
 6. **generate_delivery_constraint**: set a delivery preference about WHERE to DROP packages, expressed as a DIRECTION (leftmost / rightmost / topmost / bottommost). Only use this for drop-off zone instructions, never for movement goals.
+7. **generate_stack_constraint**: set a delivery reward rule based on HOW MANY parcels are carried at delivery time (e.g. "exactly 3 parcels → double reward", "exactly 5 → 0.3x"). Only use when the instruction specifies a parcel COUNT that affects the delivery multiplier.
 
 Key distinctions:
 - Any request with a specific coordinate (x, y) and movement/avoidance → **generate_desire**
 - Any request about delivery direction (leftmost/rightmost/topmost/bottommost) → **generate_delivery_constraint**
+- Any request about delivering a specific NUMBER/COUNT of parcels for a reward multiplier → **generate_stack_constraint**
 - Any general factual question (capitals, history, science) → **common_knowledge**
 - Any numerical expression to compute → **calculate**
-`; 
+`;
 
-export const ACTIONS: string[] = ["calculate", "get_current_time", "get_my_position", "generate_desire", "common_knowledge", "generate_delivery_constraint"];
+export const ACTIONS: string[] = ["calculate", "get_current_time", "get_my_position", "generate_desire", "common_knowledge", "generate_delivery_constraint", "generate_stack_constraint"];
 
 export const SPLITTER_PROMPT = `
 You are a request splitter.
@@ -91,6 +93,9 @@ User: "Drop in leftmost tile for +5 pts" → generate_delivery_constraint
 User: "Do not deliver to rightmost tile" → generate_delivery_constraint
 User: "What time is it in Rome?"   → get_current_time
 User: "Where am I?"                → get_my_position
+User: "Deliver stacks of exactly 3 parcels to double the reward" → generate_stack_constraint
+User: "Exactly 5 parcels at once gives 0.3 of the standard reward" → generate_stack_constraint
+User: "Delivering 4 or more parcels gives 1.5x" → generate_stack_constraint
 `.trim();
 
 export const GET_CITY_PROMPT = `You are a helpful assistant that extracts city names from user input.
@@ -239,4 +244,36 @@ Output: {"action": "go_to", "x": 2, "y": 3, "points": 10, "multiplier": 1}
 
 Input: "Avoid tile (0, 1) you lose 50pts"
 Output: {"action": "avoid", "x": 0, "y": 1, "points": -50, "multiplier": 1}
+`.trim();
+
+export const STACK_CONSTRAINT_PROMPT = `
+You are an assistant that extracts parcel stack size delivery constraints for a DeliverooJS agent.
+
+Given an instruction about delivering a specific number of parcels at once and the reward multiplier that applies, extract the structured constraint.
+
+Return a JSON object:
+{
+  "count": number,
+  "operator": "equals" | "at_least" | "at_most",
+  "multiplier": number
+}
+
+Rules:
+- count: the number of parcels in the stack
+- operator: "equals" for "exactly N", "at_least" for "N or more / at least N", "at_most" for "N or fewer / at most N"
+- multiplier: the reward factor (2 for "double", 0.5 for "half", 0.3 for "0.3 of standard", 0 for "no reward")
+- Return valid JSON only, no markdown, no explanation
+
+Examples:
+Input: "Deliver stacks of exactly 3 parcels at a time to double the reward"
+Output: {"count": 3, "operator": "equals", "multiplier": 2}
+
+Input: "Deliver stacks of exactly 5 parcels at a time to get 0.3 of the standard reward"
+Output: {"count": 5, "operator": "equals", "multiplier": 0.3}
+
+Input: "Delivering 4 or more parcels at once gives you 1.5x the reward"
+Output: {"count": 4, "operator": "at_least", "multiplier": 1.5}
+
+Input: "Delivering at most 2 parcels cuts the reward in half"
+Output: {"count": 2, "operator": "at_most", "multiplier": 0.5}
 `.trim();

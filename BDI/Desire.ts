@@ -1,6 +1,36 @@
 ﻿import * as utils from "../utils.ts";
 import type { Agent, World, Parcel } from "./Belief.ts";
 
+export type StackConstraint = {
+    count: number;
+    operator: 'equals' | 'at_least' | 'at_most';
+    multiplier: number;
+};
+
+export function effectiveDeliveryMultiplier(
+    carriedQty: number,
+    stackConstraints: StackConstraint[],
+    availableParcels: number,
+): number {
+    if (stackConstraints.length === 0) return 1;
+
+    for (const c of stackConstraints) {
+        const matches =
+            (c.operator === 'equals'   && carriedQty === c.count) ||
+            (c.operator === 'at_least' && carriedQty >= c.count)  ||
+            (c.operator === 'at_most'  && carriedQty <= c.count);
+        if (matches) return c.multiplier;
+    }
+
+    // No constraint matched — check if a favorable target is still reachable
+    const hasReachableFavorable = stackConstraints.some(
+        c => c.multiplier > 1 && c.operator === 'equals' && c.count > carriedQty,
+    );
+    if (hasReachableFavorable && availableParcels > 0) return 0.1;
+
+    return 1;
+}
+
 export class Desire {
     type: string;
     x_target: number;
@@ -83,6 +113,7 @@ export function generateDesires(
     extraBlocked: Set<string> = new Set(),
     llmGoToTile: Desire[] = [],
     forcedDeliveryKeys: Set<string> = new Set(),
+    stackConstraints: StackConstraint[] = [],
 ): Desire[] {
     if (!myAgent || !worldMap) return [];
 
@@ -122,10 +153,11 @@ export function generateDesires(
             }
         }
 
+        const stackMult = effectiveDeliveryMultiplier(carriedQty, stackConstraints, worldMap.parcels.size);
         for (const d of candidates) {
             const dist = agentFinder.getDistance(d);
             if (dist === Infinity) continue;
-            let utility = Math.max(carriedReward - carriedQty * decayPerStep * dist, 0.01);
+            let utility = Math.max(carriedReward - carriedQty * decayPerStep * dist, 0.01) * stackMult;
             if (stationaryEnemies.has(`${d.x},${d.y}`)) utility *= 0.1;
             desires.push(new Desire("go_delivery", d.x, d.y, utility));
         }
