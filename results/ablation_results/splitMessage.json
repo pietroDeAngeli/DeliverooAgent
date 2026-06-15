@@ -1,18 +1,18 @@
 {
   "category": "splitMessage",
-  "timestamp": "2026-06-15T13-25-05",
-  "total": 30,
-  "passed": 28,
-  "failed": 2,
-  "accuracy_pct": 93.3,
-  "avg_latency_ms": 627,
+  "timestamp": "2026-06-15T14-06-17",
+  "total": 35,
+  "passed": 34,
+  "failed": 1,
+  "accuracy_pct": 97.1,
+  "avg_latency_ms": 660,
   "tests": [
     {
       "id": 1,
       "description": "Single desire action stays as one item",
       "input": "Go to tile (3, 4) to get +10 points",
       "passed": true,
-      "latency_ms": 1460,
+      "latency_ms": 1614,
       "actual": "[\"Go to tile (3, 4) to get +10 points\"]"
     },
     {
@@ -20,15 +20,15 @@
       "description": "Single calculate action stays as one item",
       "input": "What is 2 + 2?",
       "passed": true,
-      "latency_ms": 480,
-      "actual": "[\"calculate 2 + 2\"]"
+      "latency_ms": 530,
+      "actual": "[\"What is 2 + 2?\"]"
     },
     {
       "id": 3,
       "description": "Single time query stays as one item",
       "input": "What is the current time in Tokyo?",
       "passed": true,
-      "latency_ms": 396,
+      "latency_ms": 382,
       "actual": "[\"What is the current time in Tokyo?\"]"
     },
     {
@@ -36,7 +36,7 @@
       "description": "Two actions split: desire + time",
       "input": "Go to tile (3,4) to get +10pts and tell me the current time in London",
       "passed": true,
-      "latency_ms": 777,
+      "latency_ms": 769,
       "actual": "[\"Go to tile (3,4) to get +10pts\",\"tell me the current time in London\"]"
     },
     {
@@ -44,7 +44,7 @@
       "description": "Two actions split: calculate + time",
       "input": "Calculate 5*3 and tell me the time in Paris",
       "passed": true,
-      "latency_ms": 533,
+      "latency_ms": 526,
       "actual": "[\"Calculate 5*3\",\"tell me the time in Paris\"]"
     },
     {
@@ -52,15 +52,15 @@
       "description": "Two actions split: position + time",
       "input": "Where am I and what time is it in Rome?",
       "passed": true,
-      "latency_ms": 472,
-      "actual": "[\"get_my_position\",\"what time is it in Rome\"]"
+      "latency_ms": 464,
+      "actual": "[\"Where am I\",\"what time is it in Rome\"]"
     },
     {
       "id": 7,
       "description": "Two actions split: desire + calculate",
       "input": "Move to tile (5, 8) for +15 points and calculate 4*7",
       "passed": true,
-      "latency_ms": 717,
+      "latency_ms": 714,
       "actual": "[\"Move to tile (5, 8) for +15 points\",\"calculate 4*7\"]"
     },
     {
@@ -68,7 +68,7 @@
       "description": "Three actions split: desire + time + calculate",
       "input": "Go to (2,3) for +5pts, tell me the time in Berlin, and compute sqrt(16)",
       "passed": true,
-      "latency_ms": 880,
+      "latency_ms": 877,
       "actual": "[\"Go to (2,3) for +5pts\",\"tell me the time in Berlin\",\"compute sqrt(16)\"]"
     },
     {
@@ -76,7 +76,7 @@
       "description": "Math expression in coordinates is NOT split",
       "input": "Move to x=4*2 y=(1+3)*3 to get +10pts",
       "passed": true,
-      "latency_ms": 694,
+      "latency_ms": 690,
       "actual": "[\"Move to x=4*2 y=(1+3)*3 to get +10pts\"]"
     },
     {
@@ -84,7 +84,7 @@
       "description": "Delivery constraint stays as one item",
       "input": "Drop packages in leftmost tile to get +5 points",
       "passed": true,
-      "latency_ms": 470,
+      "latency_ms": 466,
       "actual": "[\"Drop packages in leftmost tile to get +5 points\"]"
     },
     {
@@ -92,7 +92,7 @@
       "description": "Two delivery constraints are split",
       "input": "Drop in leftmost tile for +5pts and avoid rightmost tile",
       "passed": true,
-      "latency_ms": 577,
+      "latency_ms": 573,
       "actual": "[\"Drop in leftmost tile for +5pts\",\"avoid rightmost tile\"]"
     },
     {
@@ -100,7 +100,7 @@
       "description": "Desire + delivery constraint split",
       "input": "Go to tile (7,3) for +20 points and drop in topmost tile for +10 points",
       "passed": true,
-      "latency_ms": 800,
+      "latency_ms": 796,
       "actual": "[\"Go to tile (7,3) for +20 points\",\"drop in topmost tile for +10 points\"]"
     },
     {
@@ -108,7 +108,7 @@
       "description": "Common knowledge stays as one item",
       "input": "What is the capital of France?",
       "passed": true,
-      "latency_ms": 370,
+      "latency_ms": 363,
       "actual": "[\"What is the capital of France?\"]"
     },
     {
@@ -116,7 +116,7 @@
       "description": "Common knowledge + time split",
       "input": "What is the capital of Japan? Also tell me the time in Tokyo.",
       "passed": true,
-      "latency_ms": 545,
+      "latency_ms": 553,
       "actual": "[\"What is the capital of Japan?\",\"tell me the time in Tokyo\"]"
     },
     {
@@ -124,7 +124,7 @@
       "description": "Position query stays as one item",
       "input": "What is my current position?",
       "passed": true,
-      "latency_ms": 252,
+      "latency_ms": 250,
       "actual": "[\"get_my_position\"]"
     },
     {
@@ -132,7 +132,7 @@
       "description": "Avoid tile desire stays as one",
       "input": "Avoid tile (1, 1) it's dangerous",
       "passed": true,
-      "latency_ms": 465,
+      "latency_ms": 462,
       "actual": "[\"Avoid tile (1, 1) it's dangerous\"]"
     },
     {
@@ -140,15 +140,15 @@
       "description": "Three separate time queries are split",
       "input": "Tell me the time in London, Paris, and Tokyo",
       "passed": true,
-      "latency_ms": 760,
-      "actual": "[\"tell me the time in London\",\"tell me the time in Paris\",\"tell me the time in Tokyo\"]"
+      "latency_ms": 756,
+      "actual": "[\"Tell me the time in London\",\"Tell me the time in Paris\",\"Tell me the time in Tokyo\"]"
     },
     {
       "id": 18,
       "description": "Desire + avoid tile are split",
       "input": "Go to tile (5,5) for +10pts and avoid tile (1,1)",
       "passed": true,
-      "latency_ms": 756,
+      "latency_ms": 744,
       "actual": "[\"Go to tile (5,5) for +10pts\",\"avoid tile (1,1)\"]"
     },
     {
@@ -156,7 +156,7 @@
       "description": "Modifier phrase stays attached to its action",
       "input": "Go to tile (3,4) for 10 points",
       "passed": true,
-      "latency_ms": 495,
+      "latency_ms": 494,
       "actual": "[\"Go to tile (3,4) for 10 points\"]"
     },
     {
@@ -164,15 +164,15 @@
       "description": "Calculate with expression containing function",
       "input": "What is sqrt(144)?",
       "passed": true,
-      "latency_ms": 304,
-      "actual": "[\"calculate sqrt(144)\"]"
+      "latency_ms": 331,
+      "actual": "[\"What is sqrt(144)?\"]"
     },
     {
       "id": 21,
       "description": "Four actions are fully split",
       "input": "Go to (3,4) for +5pts, calculate 10*2, tell me the time in NY, and where am I?",
       "passed": true,
-      "latency_ms": 1069,
+      "latency_ms": 1050,
       "actual": "[\"Go to (3,4) for +5pts\",\"calculate 10*2\",\"tell me the time in NY\",\"where am I?\"]"
     },
     {
@@ -180,7 +180,7 @@
       "description": "Italian language input stays intact",
       "input": "Vai alla casella (2,3) per +5 punti",
       "passed": true,
-      "latency_ms": 595,
+      "latency_ms": 572,
       "actual": "[\"Vai alla casella (2,3) per +5 punti\"]"
     },
     {
@@ -188,7 +188,7 @@
       "description": "Delivery constraint + calculate split",
       "input": "Avoid the bottommost tile and what is 3^4?",
       "passed": true,
-      "latency_ms": 558,
+      "latency_ms": 555,
       "actual": "[\"Avoid the bottommost tile\",\"what is 3^4?\"]"
     },
     {
@@ -204,7 +204,7 @@
       "description": "Desire with negative points (avoid) stays as one",
       "input": "Avoid tile (9,9) penalty -20pts",
       "passed": true,
-      "latency_ms": 469,
+      "latency_ms": 462,
       "actual": "[\"Avoid tile (9,9) penalty -20pts\"]"
     },
     {
@@ -212,7 +212,7 @@
       "description": "Traversal penalty stays as one",
       "input": "Do not go through tile (2, 3) otherwise you lose 50pts",
       "passed": true,
-      "latency_ms": 644,
+      "latency_ms": 635,
       "actual": "[\"Do not go through tile (2, 3) otherwise you lose 50pts\"]"
     },
     {
@@ -220,23 +220,23 @@
       "description": "Delivery bonus stays as one",
       "input": "Every time you deliver in (3, 4) you get 5x pts",
       "passed": true,
-      "latency_ms": 637,
+      "latency_ms": 632,
       "actual": "[\"Every time you deliver in (3, 4) you get 5x pts\"]"
     },
     {
       "id": 28,
-      "description": "Two bonus delivery tiles split into two",
+      "description": "Two bonus delivery tiles split into two, each sub-message keeps the bonus",
       "input": "Every time you deliver in (3, 4) or (2, 1) you get 5x pts",
-      "passed": false,
-      "latency_ms": 820,
-      "actual": "[\"Every time you deliver in (3, 4) or (2, 1) you get 5x pts\"]"
+      "passed": true,
+      "latency_ms": 1134,
+      "actual": "[\"Every time you deliver in (3, 4) you get 5x pts\",\"Every time you deliver in (2, 1) you get 5x pts\"]"
     },
     {
       "id": 29,
       "description": "Traversal penalty + delivery bonus split",
       "input": "Do not go through tile (5, 5) and deliver in (3, 4) for 5x pts",
       "passed": false,
-      "latency_ms": 852,
+      "latency_ms": 854,
       "actual": "[\"Do not go through tile (5, 5)\",\"deliver in (3, 4) for 5x pts\"]"
     },
     {
@@ -246,6 +246,46 @@
       "passed": true,
       "latency_ms": 606,
       "actual": "[\"Every time you deliver in (1, 2) you get 0 pts\"]"
+    },
+    {
+      "id": 31,
+      "description": "Delivery tile + reward word is NOT split (the bug fix case)",
+      "input": "deliverying in 2,13 gives triple the reward",
+      "passed": true,
+      "latency_ms": 460,
+      "actual": "[\"deliverying in 2,13 gives triple the reward\"]"
+    },
+    {
+      "id": 32,
+      "description": "Challenge query: multi-tile 5x bonus split with bonus context in each part",
+      "input": "Every time you deliver in (3, 4) or (5, 6) you get 5x pts than in a regular delivery tile",
+      "passed": true,
+      "latency_ms": 1470,
+      "actual": "[\"Every time you deliver in (3, 4) you get 5x pts than in a regular delivery tile\",\"Every time you deliver in (5, 6) you get 5x pts than in a regular delivery tile\"]"
+    },
+    {
+      "id": 33,
+      "description": "Challenge query: stack constraint stays as one item",
+      "input": "Deliver stacks of exactly 3 parcels at a time to double the reward",
+      "passed": true,
+      "latency_ms": 573,
+      "actual": "[\"Deliver stacks of exactly 3 parcels at a time to double the reward\"]"
+    },
+    {
+      "id": 34,
+      "description": "Challenge query: stack constraint with sub-1 multiplier stays as one item",
+      "input": "Deliver stacks of exactly 5 parcels at a time to get 0.3 of the standard reward",
+      "passed": true,
+      "latency_ms": 742,
+      "actual": "[\"Deliver stacks of exactly 5 parcels at a time to get 0.3 of the standard reward\"]"
+    },
+    {
+      "id": 35,
+      "description": "Challenge query: traversal penalty (challenge phrasing) stays as one",
+      "input": "Do not go through tile (3, 7) otherwise you lose 50pts",
+      "passed": true,
+      "latency_ms": 635,
+      "actual": "[\"Do not go through tile (3, 7) otherwise you lose 50pts\"]"
     }
   ]
 }

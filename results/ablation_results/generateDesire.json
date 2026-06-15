@@ -1,18 +1,18 @@
 {
   "category": "generateDesire",
-  "timestamp": "2026-06-15T13-25-05",
-  "total": 19,
-  "passed": 19,
+  "timestamp": "2026-06-15T14-06-17",
+  "total": 23,
+  "passed": 23,
   "failed": 0,
   "accuracy_pct": 100,
-  "avg_latency_ms": 984,
+  "avg_latency_ms": 979,
   "tests": [
     {
       "id": 1,
       "description": "Go to tile with positive points → go_to",
       "input": "Go to tile (4, 5) for +10 pts",
       "passed": true,
-      "latency_ms": 1002,
+      "latency_ms": 997,
       "actual": "{\"action\":\"go_to\",\"x\":4,\"y\":5,\"points\":10,\"multiplier\":1}"
     },
     {
@@ -20,7 +20,7 @@
       "description": "Avoid tile with explicit negative points → avoid",
       "input": "Avoid tile (1, 1), penalty -20pts",
       "passed": true,
-      "latency_ms": 951,
+      "latency_ms": 948,
       "actual": "{\"action\":\"avoid\",\"x\":1,\"y\":1,\"points\":-20,\"multiplier\":1}"
     },
     {
@@ -28,7 +28,7 @@
       "description": "Traversal penalty (do not go through) → avoid",
       "input": "Do not go through tile (2, 3) otherwise you lose 50pts",
       "passed": true,
-      "latency_ms": 949,
+      "latency_ms": 947,
       "actual": "{\"action\":\"avoid\",\"x\":2,\"y\":3,\"points\":-50,\"multiplier\":1}"
     },
     {
@@ -36,7 +36,7 @@
       "description": "Traversal penalty phrased as walking cost → avoid",
       "input": "Tile (5, 5) costs you 50 points if you walk through it",
       "passed": true,
-      "latency_ms": 952,
+      "latency_ms": 953,
       "actual": "{\"action\":\"avoid\",\"x\":5,\"y\":5,\"points\":-50,\"multiplier\":1}"
     },
     {
@@ -44,7 +44,7 @@
       "description": "Delivery bonus 5x → go_delivery with multiplier",
       "input": "Every time you deliver in (3, 4) you get 5x pts",
       "passed": true,
-      "latency_ms": 980,
+      "latency_ms": 976,
       "actual": "{\"action\":\"go_delivery\",\"x\":3,\"y\":4,\"points\":0,\"multiplier\":5}"
     },
     {
@@ -52,7 +52,7 @@
       "description": "Delivery bonus 3x at different tile → go_delivery with multiplier",
       "input": "Delivering at (0, 7) gives you 3x the normal reward",
       "passed": true,
-      "latency_ms": 981,
+      "latency_ms": 978,
       "actual": "{\"action\":\"go_delivery\",\"x\":0,\"y\":7,\"points\":0,\"multiplier\":3}"
     },
     {
@@ -60,7 +60,7 @@
       "description": "Zero-point delivery tile → avoid_delivery",
       "input": "Every time you deliver in (1, 2) you get 0 pts",
       "passed": true,
-      "latency_ms": 980,
+      "latency_ms": 977,
       "actual": "{\"action\":\"avoid_delivery\",\"x\":1,\"y\":2,\"points\":0,\"multiplier\":0}"
     },
     {
@@ -68,7 +68,7 @@
       "description": "Delivery tile yields nothing → avoid_delivery",
       "input": "Dropping packages at (4, 4) gives no points at all",
       "passed": true,
-      "latency_ms": 980,
+      "latency_ms": 982,
       "actual": "{\"action\":\"avoid_delivery\",\"x\":4,\"y\":4,\"points\":0,\"multiplier\":0}"
     },
     {
@@ -76,7 +76,7 @@
       "description": "Italian: go to tile → go_to",
       "input": "Vai alla casella (6, 2) per +15 punti",
       "passed": true,
-      "latency_ms": 980,
+      "latency_ms": 977,
       "actual": "{\"action\":\"go_to\",\"x\":6,\"y\":2,\"points\":15,\"multiplier\":1}"
     },
     {
@@ -84,7 +84,7 @@
       "description": "Italian: traversal penalty → avoid",
       "input": "Non passare per la casella (2, 2), perdi 50 punti",
       "passed": true,
-      "latency_ms": 949,
+      "latency_ms": 948,
       "actual": "{\"action\":\"avoid\",\"x\":2,\"y\":2,\"points\":-50,\"multiplier\":1}"
     },
     {
@@ -92,7 +92,7 @@
       "description": "Italian: delivery bonus → go_delivery",
       "input": "Ogni volta che consegni in (3, 4) ottieni 5x punti",
       "passed": true,
-      "latency_ms": 990,
+      "latency_ms": 988,
       "actual": "{\"action\":\"go_delivery\",\"x\":3,\"y\":4,\"points\":0,\"multiplier\":5}"
     },
     {
@@ -100,7 +100,7 @@
       "description": "Negative traversal phrased as avoidance with explicit loss → avoid",
       "input": "Steer clear of (7, 1) or you lose 50 points",
       "passed": true,
-      "latency_ms": 952,
+      "latency_ms": 943,
       "actual": "{\"action\":\"avoid\",\"x\":7,\"y\":1,\"points\":-50,\"multiplier\":1}"
     },
     {
@@ -108,7 +108,7 @@
       "description": "x0 multiplier phrasing (admin style) → avoid_delivery",
       "input": "delivery tile 6,13 gives x0 points",
       "passed": true,
-      "latency_ms": 973,
+      "latency_ms": 969,
       "actual": "{\"action\":\"avoid_delivery\",\"x\":6,\"y\":13,\"points\":0,\"multiplier\":0}"
     },
     {
@@ -116,7 +116,7 @@
       "description": "x0.5 sub-1 multiplier → avoid_delivery",
       "input": "delivery tile 4,7 gives x0.5 points",
       "passed": true,
-      "latency_ms": 1031,
+      "latency_ms": 1026,
       "actual": "{\"action\":\"avoid_delivery\",\"x\":4,\"y\":7,\"points\":0,\"multiplier\":0.5}"
     },
     {
@@ -124,7 +124,7 @@
       "description": "Fractional reward phrasing (0.3 of standard) → avoid_delivery",
       "input": "delivering to tile (2, 8) gives you 0.3 of the standard reward",
       "passed": true,
-      "latency_ms": 1052,
+      "latency_ms": 1038,
       "actual": "{\"action\":\"avoid_delivery\",\"x\":2,\"y\":8,\"points\":0,\"multiplier\":0.3}"
     },
     {
@@ -132,7 +132,7 @@
       "description": "High bonus multiplier x200 → go_delivery",
       "input": "delivery tile 2,13 gives x200 of the reward",
       "passed": true,
-      "latency_ms": 983,
+      "latency_ms": 980,
       "actual": "{\"action\":\"go_delivery\",\"x\":2,\"y\":13,\"points\":0,\"multiplier\":200}"
     },
     {
@@ -140,7 +140,7 @@
       "description": "High bonus multiplier x100 → go_delivery",
       "input": "delivery tile 2,13 gives x100 points",
       "passed": true,
-      "latency_ms": 999,
+      "latency_ms": 997,
       "actual": "{\"action\":\"go_delivery\",\"x\":2,\"y\":13,\"points\":0,\"multiplier\":100}"
     },
     {
@@ -148,7 +148,7 @@
       "description": "Italian: x0 delivery → avoid_delivery",
       "input": "Ogni volta che consegni in (6, 13) ottieni 0 punti",
       "passed": true,
-      "latency_ms": 990,
+      "latency_ms": 978,
       "actual": "{\"action\":\"avoid_delivery\",\"x\":6,\"y\":13,\"points\":0,\"multiplier\":0}"
     },
     {
@@ -156,8 +156,40 @@
       "description": "Percentage fraction below 1 (30% of reward) → avoid_delivery",
       "input": "Tile (5, 9) gives you only 30% of the normal reward when delivering",
       "passed": true,
-      "latency_ms": 1026,
+      "latency_ms": 1028,
       "actual": "{\"action\":\"avoid_delivery\",\"x\":5,\"y\":9,\"points\":0,\"multiplier\":0.3}"
+    },
+    {
+      "id": 20,
+      "description": "Challenge: 'triple reward' delivery phrasing → go_delivery multiplier 3",
+      "input": "deliverying in 2,13 gives triple the reward",
+      "passed": true,
+      "latency_ms": 964,
+      "actual": "{\"action\":\"go_delivery\",\"x\":2,\"y\":13,\"points\":0,\"multiplier\":3}"
+    },
+    {
+      "id": 21,
+      "description": "Challenge: single-tile sub-message after split → go_delivery 5x",
+      "input": "Every time you deliver in (3, 4) you get 5x pts than in a regular delivery tile",
+      "passed": true,
+      "latency_ms": 986,
+      "actual": "{\"action\":\"go_delivery\",\"x\":3,\"y\":4,\"points\":0,\"multiplier\":5}"
+    },
+    {
+      "id": 22,
+      "description": "Second tile sub-message after split → go_delivery 5x",
+      "input": "Every time you deliver in (5, 6) you get 5x pts than in a regular delivery tile",
+      "passed": true,
+      "latency_ms": 979,
+      "actual": "{\"action\":\"go_delivery\",\"x\":5,\"y\":6,\"points\":0,\"multiplier\":5}"
+    },
+    {
+      "id": 23,
+      "description": "Challenge: traversal penalty phrasing → avoid with negative points",
+      "input": "Do not go through tile (3, 7) otherwise you lose 50pts",
+      "passed": true,
+      "latency_ms": 948,
+      "actual": "{\"action\":\"avoid\",\"x\":3,\"y\":7,\"points\":-50,\"multiplier\":1}"
     }
   ]
 }

@@ -226,5 +226,41 @@
     "description": "Fractional reward phrasing → generate_desire",
     "input": "delivering to tile (2, 8) gives you 0.3 of the standard reward",
     "expected_action": "generate_desire"
+  },
+  {
+    "id": 39,
+    "description": "Challenge: stack constraint exactly 3 parcels → generate_stack_constraint",
+    "input": "Deliver stacks of exactly 3 parcels at a time to double the reward",
+    "expected_action": "generate_stack_constraint"
+  },
+  {
+    "id": 40,
+    "description": "Challenge: stack constraint exactly 5 parcels, sub-1 multiplier → generate_stack_constraint",
+    "input": "Deliver stacks of exactly 5 parcels at a time to get 0.3 of the standard reward",
+    "expected_action": "generate_stack_constraint"
+  },
+  {
+    "id": 41,
+    "description": "Stack constraint at-least phrasing → generate_stack_constraint",
+    "input": "Delivering 4 or more parcels at once gives you 1.5x the reward",
+    "expected_action": "generate_stack_constraint"
+  },
+  {
+    "id": 42,
+    "description": "Challenge: 'triple reward' delivery phrasing → generate_desire",
+    "input": "deliverying in 2,13 gives triple the reward",
+    "expected_action": "generate_desire"
+  },
+  {
+    "id": 43,
+    "description": "Challenge: single-tile 5x bonus (as it arrives after splitter) → generate_desire",
+    "input": "Every time you deliver in (3, 4) you get 5x pts than in a regular delivery tile",
+    "expected_action": "generate_desire"
+  },
+  {
+    "id": 44,
+    "description": "Challenge: traversal penalty phrasing → generate_desire",
+    "input": "Do not go through tile (3, 7) otherwise you lose 50pts",
+    "expected_action": "generate_desire"
   }
 ]

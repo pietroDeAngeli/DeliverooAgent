@@ -1,0 +1,66 @@
+[
+  {
+    "id": 1,
+    "description": "Challenge: exactly 3 parcels → double reward",
+    "input": "Deliver stacks of exactly 3 parcels at a time to double the reward",
+    "expected_count": 3,
+    "expected_operator": "equals",
+    "expected_multiplier": 2
+  },
+  {
+    "id": 2,
+    "description": "Challenge: exactly 5 parcels → 0.3x reward",
+    "input": "Deliver stacks of exactly 5 parcels at a time to get 0.3 of the standard reward",
+    "expected_count": 5,
+    "expected_operator": "equals",
+    "expected_multiplier": 0.3
+  },
+  {
+    "id": 3,
+    "description": "At least 4 parcels → 1.5x reward",
+    "input": "Delivering 4 or more parcels at once gives you 1.5x the reward",
+    "expected_count": 4,
+    "expected_operator": "at_least",
+    "expected_multiplier": 1.5
+  },
+  {
+    "id": 4,
+    "description": "At most 2 parcels → half reward",
+    "input": "Delivering at most 2 parcels cuts the reward in half",
+    "expected_count": 2,
+    "expected_operator": "at_most",
+    "expected_multiplier": 0.5
+  },
+  {
+    "id": 5,
+    "description": "Exactly 1 parcel → no reward (zero multiplier)",
+    "input": "Delivering exactly 1 parcel gives you no reward",
+    "expected_count": 1,
+    "expected_operator": "equals",
+    "expected_multiplier": 0
+  },
+  {
+    "id": 6,
+    "description": "Italian: exactly 3 parcels → double reward",
+    "input": "Consegna esattamente 3 pacchi per ottenere il doppio del reward",
+    "expected_count": 3,
+    "expected_operator": "equals",
+    "expected_multiplier": 2
+  },
+  {
+    "id": 7,
+    "description": "At least 2 parcels → 1.2x reward",
+    "input": "Delivering 2 or more parcels gives 1.2x the normal reward",
+    "expected_count": 2,
+    "expected_operator": "at_least",
+    "expected_multiplier": 1.2
+  },
+  {
+    "id": 8,
+    "description": "Exactly 5 parcels → zero multiplier (stack penalty)",
+    "input": "Exactly 5 parcels at once gives 0.3 of the standard reward",
+    "expected_count": 5,
+    "expected_operator": "equals",
+    "expected_multiplier": 0.3
+  }
+]

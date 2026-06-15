@@ -1,8 +1,8 @@
 {
   "category": "decideNextAction",
-  "timestamp": "2026-06-15T13-25-05",
-  "total": 38,
-  "passed": 38,
+  "timestamp": "2026-06-15T14-06-17",
+  "total": 44,
+  "passed": 44,
   "failed": 0,
   "accuracy_pct": 100,
   "avg_latency_ms": 215,
@@ -12,7 +12,7 @@
       "description": "Simple math question → calculate",
       "input": "What is 2 + 2?",
       "passed": true,
-      "latency_ms": 816,
+      "latency_ms": 955,
       "actual": "calculate"
     },
     {
@@ -20,7 +20,7 @@
       "description": "Multiplication → calculate",
       "input": "Calculate 15 * 4",
       "passed": true,
-      "latency_ms": 157,
+      "latency_ms": 147,
       "actual": "calculate"
     },
     {
@@ -28,7 +28,7 @@
       "description": "Complex expression → calculate",
       "input": "What is sqrt(144) + 3^2?",
       "passed": true,
-      "latency_ms": 154,
+      "latency_ms": 149,
       "actual": "calculate"
     },
     {
@@ -36,7 +36,7 @@
       "description": "Time in a city → get_current_time",
       "input": "What is the current time in London?",
       "passed": true,
-      "latency_ms": 199,
+      "latency_ms": 197,
       "actual": "get_current_time"
     },
     {
@@ -44,7 +44,7 @@
       "description": "Time in Tokyo → get_current_time",
       "input": "Tell me what time it is in Tokyo",
       "passed": true,
-      "latency_ms": 202,
+      "latency_ms": 200,
       "actual": "get_current_time"
     },
     {
@@ -60,7 +60,7 @@
       "description": "My position → get_my_position",
       "input": "Where am I?",
       "passed": true,
-      "latency_ms": 201,
+      "latency_ms": 198,
       "actual": "get_my_position"
     },
     {
@@ -68,7 +68,7 @@
       "description": "Current position → get_my_position",
       "input": "What is my current position?",
       "passed": true,
-      "latency_ms": 201,
+      "latency_ms": 203,
       "actual": "get_my_position"
     },
     {
@@ -76,7 +76,7 @@
       "description": "Agent location → get_my_position",
       "input": "Tell me my coordinates",
       "passed": true,
-      "latency_ms": 196,
+      "latency_ms": 199,
       "actual": "get_my_position"
     },
     {
@@ -84,7 +84,7 @@
       "description": "Move to a tile → generate_desire",
       "input": "Go to tile (3, 4) for +10 points",
       "passed": true,
-      "latency_ms": 210,
+      "latency_ms": 208,
       "actual": "generate_desire"
     },
     {
@@ -92,7 +92,7 @@
       "description": "Move to location → generate_desire",
       "input": "Move to position (7, 2)",
       "passed": true,
-      "latency_ms": 197,
+      "latency_ms": 202,
       "actual": "generate_desire"
     },
     {
@@ -100,7 +100,7 @@
       "description": "Avoid tile → generate_desire",
       "input": "Avoid tile (1, 1) it's dangerous",
       "passed": true,
-      "latency_ms": 196,
+      "latency_ms": 198,
       "actual": "generate_desire"
     },
     {
@@ -108,7 +108,7 @@
       "description": "Go to corner → generate_desire",
       "input": "Head to the bottom-left corner at (0,0)",
       "passed": true,
-      "latency_ms": 207,
+      "latency_ms": 206,
       "actual": "generate_desire"
     },
     {
@@ -116,7 +116,7 @@
       "description": "General knowledge question → common_knowledge",
       "input": "What is the capital of France?",
       "passed": true,
-      "latency_ms": 201,
+      "latency_ms": 198,
       "actual": "common_knowledge"
     },
     {
@@ -124,7 +124,7 @@
       "description": "Historical fact → common_knowledge",
       "input": "Who invented the telephone?",
       "passed": true,
-      "latency_ms": 204,
+      "latency_ms": 198,
       "actual": "common_knowledge"
     },
     {
@@ -132,7 +132,7 @@
       "description": "Scientific fact → common_knowledge",
       "input": "What is the speed of light?",
       "passed": true,
-      "latency_ms": 200,
+      "latency_ms": 198,
       "actual": "common_knowledge"
     },
     {
@@ -140,7 +140,7 @@
       "description": "Delivery constraint leftmost → generate_delivery_constraint",
       "input": "Drop packages in the leftmost tile for +5 points",
       "passed": true,
-      "latency_ms": 198,
+      "latency_ms": 196,
       "actual": "generate_delivery_constraint"
     },
     {
@@ -148,7 +148,7 @@
       "description": "Delivery constraint rightmost → generate_delivery_constraint",
       "input": "Deliver to the rightmost tile to earn 10 points",
       "passed": true,
-      "latency_ms": 207,
+      "latency_ms": 205,
       "actual": "generate_delivery_constraint"
     },
     {
@@ -156,7 +156,7 @@
       "description": "Avoid delivery zone → generate_delivery_constraint",
       "input": "Do not drop in the topmost tile",
       "passed": true,
-      "latency_ms": 195,
+      "latency_ms": 198,
       "actual": "generate_delivery_constraint"
     },
     {
@@ -164,7 +164,7 @@
       "description": "Delivery bottommost penalty → generate_delivery_constraint",
       "input": "You lose 5 points if you drop in the bottommost tile",
       "passed": true,
-      "latency_ms": 210,
+      "latency_ms": 212,
       "actual": "generate_delivery_constraint"
     },
     {
@@ -172,7 +172,7 @@
       "description": "Division → calculate",
       "input": "Compute 100 / 4",
       "passed": true,
-      "latency_ms": 147,
+      "latency_ms": 150,
       "actual": "calculate"
     },
     {
@@ -180,7 +180,7 @@
       "description": "Italian: dove sono → get_my_position",
       "input": "Dove sono adesso?",
       "passed": true,
-      "latency_ms": 197,
+      "latency_ms": 198,
       "actual": "get_my_position"
     },
     {
@@ -188,7 +188,7 @@
       "description": "Italian: vai a casella → generate_desire",
       "input": "Vai alla casella (5, 3) per +10 punti",
       "passed": true,
-      "latency_ms": 208,
+      "latency_ms": 206,
       "actual": "generate_desire"
     },
     {
@@ -196,7 +196,7 @@
       "description": "Italian: calcola → calculate",
       "input": "Calcola 7 * 8",
       "passed": true,
-      "latency_ms": 158,
+      "latency_ms": 147,
       "actual": "calculate"
     },
     {
@@ -204,7 +204,7 @@
       "description": "Desire with avoid semantic → generate_desire",
       "input": "Stay away from tile (9, 9), it has -20 pts",
       "passed": true,
-      "latency_ms": 227,
+      "latency_ms": 207,
       "actual": "generate_desire"
     },
     {
@@ -212,7 +212,7 @@
       "description": "Traversal penalty tile → generate_desire",
       "input": "Do not go through tile (2, 3) otherwise you lose 50pts",
       "passed": true,
-      "latency_ms": 212,
+      "latency_ms": 209,
       "actual": "generate_desire"
     },
     {
@@ -228,7 +228,7 @@
       "description": "Delivery bonus multiplier → generate_desire",
       "input": "Every time you deliver in (3, 4) you get 5x pts",
       "passed": true,
-      "latency_ms": 209,
+      "latency_ms": 206,
       "actual": "generate_desire"
     },
     {
@@ -236,7 +236,7 @@
       "description": "Delivery bonus at tile → generate_desire",
       "input": "Delivering at (0, 7) gives you 3x the normal reward",
       "passed": true,
-      "latency_ms": 210,
+      "latency_ms": 209,
       "actual": "generate_desire"
     },
     {
@@ -244,7 +244,7 @@
       "description": "Zero-point delivery tile → generate_desire",
       "input": "Every time you deliver in (1, 2) you get 0 pts",
       "passed": true,
-      "latency_ms": 212,
+      "latency_ms": 210,
       "actual": "generate_desire"
     },
     {
@@ -252,7 +252,7 @@
       "description": "Delivery tile yields nothing → generate_desire",
       "input": "Dropping packages at (4, 4) gives no points at all",
       "passed": true,
-      "latency_ms": 210,
+      "latency_ms": 208,
       "actual": "generate_desire"
     },
     {
@@ -260,7 +260,7 @@
       "description": "Directional delivery still → generate_delivery_constraint",
       "input": "Drop in the leftmost tile for +5 pts",
       "passed": true,
-      "latency_ms": 197,
+      "latency_ms": 199,
       "actual": "generate_delivery_constraint"
     },
     {
@@ -268,7 +268,7 @@
       "description": "Italian: traversal penalty → generate_desire",
       "input": "Non passare per la casella (2, 2), perdi 50 punti",
       "passed": true,
-      "latency_ms": 208,
+      "latency_ms": 205,
       "actual": "generate_desire"
     },
     {
@@ -284,7 +284,7 @@
       "description": "Admin x0 delivery tile → generate_desire",
       "input": "delivery tile 6,13 gives x0 points",
       "passed": true,
-      "latency_ms": 201,
+      "latency_ms": 195,
       "actual": "generate_desire"
     },
     {
@@ -292,7 +292,7 @@
       "description": "Admin high bonus tile x200 → generate_desire",
       "input": "delivery tile 2,13 gives x200 of the reward",
       "passed": true,
-      "latency_ms": 200,
+      "latency_ms": 196,
       "actual": "generate_desire"
     },
     {
@@ -300,7 +300,7 @@
       "description": "Sub-1 multiplier x0.5 delivery tile → generate_desire",
       "input": "delivery tile 4,7 gives x0.5 points",
       "passed": true,
-      "latency_ms": 201,
+      "latency_ms": 198,
       "actual": "generate_desire"
     },
     {
@@ -309,6 +309,54 @@
       "input": "delivering to tile (2, 8) gives you 0.3 of the standard reward",
       "passed": true,
       "latency_ms": 209,
+      "actual": "generate_desire"
+    },
+    {
+      "id": 39,
+      "description": "Challenge: stack constraint exactly 3 parcels → generate_stack_constraint",
+      "input": "Deliver stacks of exactly 3 parcels at a time to double the reward",
+      "passed": true,
+      "latency_ms": 207,
+      "actual": "generate_stack_constraint"
+    },
+    {
+      "id": 40,
+      "description": "Challenge: stack constraint exactly 5 parcels, sub-1 multiplier → generate_stack_constraint",
+      "input": "Deliver stacks of exactly 5 parcels at a time to get 0.3 of the standard reward",
+      "passed": true,
+      "latency_ms": 211,
+      "actual": "generate_stack_constraint"
+    },
+    {
+      "id": 41,
+      "description": "Stack constraint at-least phrasing → generate_stack_constraint",
+      "input": "Delivering 4 or more parcels at once gives you 1.5x the reward",
+      "passed": true,
+      "latency_ms": 211,
+      "actual": "generate_stack_constraint"
+    },
+    {
+      "id": 42,
+      "description": "Challenge: 'triple reward' delivery phrasing → generate_desire",
+      "input": "deliverying in 2,13 gives triple the reward",
+      "passed": true,
+      "latency_ms": 200,
+      "actual": "generate_desire"
+    },
+    {
+      "id": 43,
+      "description": "Challenge: single-tile 5x bonus (as it arrives after splitter) → generate_desire",
+      "input": "Every time you deliver in (3, 4) you get 5x pts than in a regular delivery tile",
+      "passed": true,
+      "latency_ms": 206,
+      "actual": "generate_desire"
+    },
+    {
+      "id": 44,
+      "description": "Challenge: traversal penalty phrasing → generate_desire",
+      "input": "Do not go through tile (3, 7) otherwise you lose 50pts",
+      "passed": true,
+      "latency_ms": 208,
       "actual": "generate_desire"
     }
   ]

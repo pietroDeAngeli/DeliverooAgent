@@ -164,5 +164,41 @@
     "expected_action": "avoid_delivery",
     "expected_x": 5,
     "expected_y": 9
+  },
+  {
+    "id": 20,
+    "description": "Challenge: 'triple reward' delivery phrasing → go_delivery multiplier 3",
+    "input": "deliverying in 2,13 gives triple the reward",
+    "expected_action": "go_delivery",
+    "expected_x": 2,
+    "expected_y": 13,
+    "expected_multiplier": 3
+  },
+  {
+    "id": 21,
+    "description": "Challenge: single-tile sub-message after split → go_delivery 5x",
+    "input": "Every time you deliver in (3, 4) you get 5x pts than in a regular delivery tile",
+    "expected_action": "go_delivery",
+    "expected_x": 3,
+    "expected_y": 4,
+    "expected_multiplier": 5
+  },
+  {
+    "id": 22,
+    "description": "Second tile sub-message after split → go_delivery 5x",
+    "input": "Every time you deliver in (5, 6) you get 5x pts than in a regular delivery tile",
+    "expected_action": "go_delivery",
+    "expected_x": 5,
+    "expected_y": 6,
+    "expected_multiplier": 5
+  },
+  {
+    "id": 23,
+    "description": "Challenge: traversal penalty phrasing → avoid with negative points",
+    "input": "Do not go through tile (3, 7) otherwise you lose 50pts",
+    "expected_action": "avoid",
+    "expected_x": 3,
+    "expected_y": 7,
+    "expected_points_negative": true
   }
 ]

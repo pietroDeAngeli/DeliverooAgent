@@ -1,11 +1,11 @@
 {
   "category": "tools",
-  "timestamp": "2026-06-15T13-25-05",
+  "timestamp": "2026-06-15T14-06-17",
   "total": 53,
   "passed": 52,
   "failed": 1,
   "accuracy_pct": 98.1,
-  "avg_latency_ms": 3,
+  "avg_latency_ms": 1,
   "tests": [
     {
       "id": 1,
@@ -20,7 +20,7 @@
       "description": "[calculate] Simple subtraction",
       "input": "10-3",
       "passed": true,
-      "latency_ms": 1,
+      "latency_ms": 0,
       "actual": "7"
     },
     {
@@ -52,7 +52,7 @@
       "description": "[calculate] Square root",
       "input": "sqrt(16)",
       "passed": true,
-      "latency_ms": 1,
+      "latency_ms": 0,
       "actual": "4"
     },
     {
@@ -76,7 +76,7 @@
       "description": "[calculate] Modulo",
       "input": "10 % 3",
       "passed": true,
-      "latency_ms": 1,
+      "latency_ms": 0,
       "actual": "1"
     },
     {
@@ -156,7 +156,7 @@
       "description": "[calculate] Log base 10",
       "input": "log(100, 10)",
       "passed": false,
-      "latency_ms": 1,
+      "latency_ms": 0,
       "actual": "4.605170185988092"
     },
     {
@@ -236,80 +236,80 @@
       "description": "[getCurrentTime] Known city: London",
       "input": "London",
       "passed": true,
-      "latency_ms": 106,
-      "actual": "The current local time in London is 2026-06-15 14:23:21 (Europe/London)."
+      "latency_ms": 42,
+      "actual": "The current local time in London is 2026-06-15 15:04:18 (Europe/London)."
     },
     {
       "id": 102,
       "description": "[getCurrentTime] Known city: Rome",
       "input": "Rome",
       "passed": true,
-      "latency_ms": 3,
-      "actual": "The current local time in Rome is 2026-06-15 15:23:21 (Europe/Rome)."
+      "latency_ms": 2,
+      "actual": "The current local time in Rome is 2026-06-15 16:04:18 (Europe/Rome)."
     },
     {
       "id": 103,
       "description": "[getCurrentTime] Known city: Tokyo",
       "input": "Tokyo",
       "passed": true,
-      "latency_ms": 3,
-      "actual": "The current local time in Tokyo is 2026-06-15 22:23:21 (Asia/Tokyo)."
+      "latency_ms": 2,
+      "actual": "The current local time in Tokyo is 2026-06-15 23:04:18 (Asia/Tokyo)."
     },
     {
       "id": 104,
       "description": "[getCurrentTime] Known city: New York",
       "input": "New York",
       "passed": true,
-      "latency_ms": 3,
-      "actual": "The current local time in New York is 2026-06-15 09:23:21 (America/New_York)."
+      "latency_ms": 1,
+      "actual": "The current local time in New York is 2026-06-15 10:04:18 (America/New_York)."
     },
     {
       "id": 105,
       "description": "[getCurrentTime] Known city: Sydney",
       "input": "Sydney",
       "passed": true,
-      "latency_ms": 1,
-      "actual": "The current local time in Sydney is 2026-06-15 23:23:21 (Australia/Sydney)."
+      "latency_ms": 0,
+      "actual": "The current local time in Sydney is 2026-06-16 00:04:18 (Australia/Sydney)."
     },
     {
       "id": 106,
       "description": "[getCurrentTime] Known city: Dubai",
       "input": "Dubai",
       "passed": true,
-      "latency_ms": 2,
-      "actual": "The current local time in Dubai is 2026-06-15 17:23:21 (Asia/Dubai)."
+      "latency_ms": 0,
+      "actual": "The current local time in Dubai is 2026-06-15 18:04:18 (Asia/Dubai)."
     },
     {
       "id": 107,
       "description": "[getCurrentTime] Known city: Berlin",
       "input": "Berlin",
       "passed": true,
-      "latency_ms": 3,
-      "actual": "The current local time in Berlin is 2026-06-15 15:23:21 (Europe/Berlin)."
+      "latency_ms": 2,
+      "actual": "The current local time in Berlin is 2026-06-15 16:04:18 (Europe/Berlin)."
     },
     {
       "id": 108,
       "description": "[getCurrentTime] Known city: Los Angeles",
       "input": "Los Angeles",
       "passed": true,
-      "latency_ms": 5,
-      "actual": "The current local time in Los Angeles is 2026-06-15 06:23:21 (America/Los_Angeles)."
+      "latency_ms": 1,
+      "actual": "The current local time in Los Angeles is 2026-06-15 07:04:18 (America/Los_Angeles)."
     },
     {
       "id": 109,
       "description": "[getCurrentTime] Known city: Paris",
       "input": "Paris",
       "passed": true,
-      "latency_ms": 5,
-      "actual": "The current local time in Paris is 2026-06-15 15:23:21 (Europe/Paris)."
+      "latency_ms": 1,
+      "actual": "The current local time in Paris is 2026-06-15 16:04:18 (Europe/Paris)."
     },
     {
       "id": 110,
       "description": "[getCurrentTime] Known city: Singapore",
       "input": "Singapore",
       "passed": true,
-      "latency_ms": 4,
-      "actual": "The current local time in Singapore is 2026-06-15 21:23:21 (Asia/Singapore)."
+      "latency_ms": 1,
+      "actual": "The current local time in Singapore is 2026-06-15 22:04:18 (Asia/Singapore)."
     },
     {
       "id": 111,
@@ -332,7 +332,7 @@
       "description": "[getCurrentTime] Unknown city returns not-found error",
       "input": "Zxqpqrstuvwxyz",
       "passed": true,
-      "latency_ms": 3,
+      "latency_ms": 1,
       "actual": "Error: location \"Zxqpqrstuvwxyz\" was not found."
     },
     {
@@ -340,16 +340,16 @@
       "description": "[getCurrentTime] Result contains 'The current local time'",
       "input": "Moscow",
       "passed": true,
-      "latency_ms": 4,
-      "actual": "The current local time in Moscow is 2026-06-15 16:23:21 (Europe/Moscow)."
+      "latency_ms": 1,
+      "actual": "The current local time in Moscow is 2026-06-15 17:04:18 (Europe/Moscow)."
     },
     {
       "id": 115,
       "description": "[getCurrentTime] Result contains timezone format YYYY-MM-DD",
       "input": "Toronto",
       "passed": true,
-      "latency_ms": 4,
-      "actual": "The current local time in Toronto is 2026-06-15 09:23:21 (America/Toronto)."
+      "latency_ms": 0,
+      "actual": "The current local time in Toronto is 2026-06-15 10:04:18 (America/Toronto)."
     },
     {
       "id": 201,
