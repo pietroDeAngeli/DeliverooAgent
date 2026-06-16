@@ -38,13 +38,22 @@ export function effectiveDeliveryMultiplier(
     return 1;
 }
 
+export type DesireType = 
+    | 'go_pickup' 
+    | 'go_delivery' 
+    | 'explore' 
+    | 'go_to'
+    | 'rendezvous'
+    | 'wait_odd_row'
+    | 'handoff_approach'
+    | 'handoff_deliverer_approach';
 export class Desire {
-    type: string;
+    type: DesireType;
     x_target: number;
     y_target: number;
     utility: number;
 
-    constructor(type: string, x_target: number, y_target: number, utility: number) {
+    constructor(type: DesireType, x_target: number, y_target: number, utility: number) {
         this.type     = type;
         this.x_target = x_target;
         this.y_target = y_target;
@@ -118,8 +127,8 @@ export function generateDesires(
     carrying: Parcel[],
     spawnVisitLog: Map<string, number> = new Map(),
     extraBlocked: Set<string> = new Set(),
-    llmGoToTile: Desire[] = [],
-    forcedDeliveryKeys: Set<string> = new Set(),
+    deliveryBonusTiles: Map<string, number> = new Map(),
+    blockedDeliveryTiles: Set<string> = new Set(),
     stackConstraints: StackConstraint[] = [],
 ): Desire[] {
     if (!myAgent || !worldMap) return [];
@@ -139,9 +148,10 @@ export function generateDesires(
 
     // ── go_delivery ───────────────────────────────────────────────────────────
     if (carriedQty > 0) {
+        // Find all delivery tiles, instantly filtering out any that the LLM explicitly blocked
         const allDelivery = [...worldMap.tiles.entries()]
-            .filter(([, t]) => t === '2')
-            .map(([key]) => { const [x, y] = key.split(',').map(Number); return { x, y }; });
+            .filter(([key, t]) => t === '2' && !blockedDeliveryTiles.has(key))
+            .map(([key]) => { const [x, y] = key.split(',').map(Number); return { x, y, key }; });
 
         const freeDelivery = allDelivery
             .filter(d => !stationaryEnemies.has(`${d.x},${d.y}`))
@@ -152,19 +162,25 @@ export function generateDesires(
             ? freeDelivery
             : allDelivery.sort((a, b) => agentFinder.getDistance(a) - agentFinder.getDistance(b)).slice(0, 3);
 
-        // Always include LLM-bonus delivery tiles even if outside the top-3 by distance
-        for (const key of forcedDeliveryKeys) {
-            if (!candidates.some(c => `${c.x},${c.y}` === key)) {
-                const found = allDelivery.find(d => `${d.x},${d.y}` === key);
+        // Always force LLM-bonus delivery tiles into the evaluation candidates
+        for (const key of deliveryBonusTiles.keys()) {
+            if (!candidates.some(c => c.key === key)) {
+                const found = allDelivery.find(d => d.key === key);
                 if (found) candidates.push(found);
             }
         }
 
         const stackMult = effectiveDeliveryMultiplier(carriedQty, stackConstraints, worldMap.parcels.size, carriedReward);
         for (const d of candidates) {
-            const dist = agentFinder.getDistance(d);
+            const dist = agentFinder.getDistance({ x: d.x, y: d.y });
             if (dist === Infinity) continue;
-            let utility = Math.max(carriedReward - carriedQty * decayPerStep * dist, 0.01) * stackMult;
+            
+            // Get the specific tile multiplier (defaults to 1 if none exists)
+            const tileBonusMult = deliveryBonusTiles.get(d.key) ?? 1;
+
+            // Apply BOTH stack constraints and spatial tile bonuses to the base utility
+            let utility = Math.max(carriedReward - carriedQty * decayPerStep * dist, 0.01) * stackMult * tileBonusMult;
+            
             if (stationaryEnemies.has(`${d.x},${d.y}`)) utility *= 0.1;
             desires.push(new Desire("go_delivery", d.x, d.y, utility));
         }
@@ -172,6 +188,9 @@ export function generateDesires(
 
     // ── go_pickup ─────────────────────────────────────────────────────────────
     for (const parcel of worldMap.parcels.values()) {
+        // Prevent chasing ghost parcels carried by other agents
+        if (parcel.carriedBy) continue; 
+
         const distToParcel = agentFinder.getDistance(parcel.pos);
         if (distToParcel === Infinity) continue;
 
@@ -193,11 +212,8 @@ export function generateDesires(
         desires.push(new Desire("go_pickup", parcel.pos.x, parcel.pos.y, utility));
     }
 
-    // ── explore (always generated; utility < 1 so pickup/delivery always dominate) ──
+    // ── explore ───────────────────────────────────────────────────────────────
     desires.push(...buildExploreDesires(agentFinder, worldMap, spawnVisitLog, decayPerStep));
-
-    // ── go_to (LLM) ─────────────────────────────────────────────────────────────────
-    desires.push(...llmGoToTile);
 
     return desires.sort((a, b) => b.utility - a.utility);
 }

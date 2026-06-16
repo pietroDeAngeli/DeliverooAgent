@@ -105,7 +105,7 @@ class World {
         this.parcels = new Map();
         this.other_agents = new Map();
         this.crates = new Map();
-        this.lifespan = 3000; // ms to keep unseen parcels/agents/crates in memory before forgetting them
+        this.lifespan = 15000; // ms to keep unseen parcels/agents/crates in memory before forgetting them
         this.movementDuration = movementDuration;
         this.parcelDecayIntervalMs = parcelDecayIntervalMs;
     }
@@ -157,7 +157,6 @@ class World {
         for (const [id, parcel] of this.parcels.entries()) {
             if (parcel.pos.x === pos.x && parcel.pos.y === pos.y) {
                 this.parcels.delete(id);
-                break;
             }
         }
     }

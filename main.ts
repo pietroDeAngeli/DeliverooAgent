@@ -401,6 +401,16 @@ socket.onSensing((sensing: any) => {
         return true;
     });
 
+    // If a parcel is in our memory, AND it is within our physical field of vision, 
+    // BUT the server didn't just send it in `sensingMap`, it means it was stolen or destroyed.
+    for (const [id, memParcel] of worldMap.parcels.entries()) {
+        const distToMem = Math.abs(myAgent.pos.x - memParcel.pos.x) + Math.abs(myAgent.pos.y - memParcel.pos.y);
+        if (distToMem <= agentObsDistance && !sensingMap.has(id)) {
+            worldMap.parcels.delete(id);
+            // debug(`[Belief] Purged phantom parcel at (${memParcel.pos.x},${memParcel.pos.y})`);
+        }
+    }
+
     recentlyFailedCells.clear();
 
     // Bounce detection: detect ABAB oscillation and block the two alternating positions
@@ -661,20 +671,16 @@ async function bdiStep(): Promise<void> {
             }
         }
         
-        let desires = generateDesires(myAgent, worldMap, carrying, spawnVisitLog, activeBlocked, [], new Set(llmDeliveryBonusTiles.keys()), llmStackConstraints);
-
-        // Apply LLM delivery tile preferences: boost bonus tiles, drop blocked delivery targets
-        if (llmDeliveryBonusTiles.size > 0 || llmBlockedDeliveryTiles.size > 0) {
-            desires = desires.flatMap(d => {
-                if (d.type !== 'go_delivery') return [d];
-                const key = `${d.x_target},${d.y_target}`;
-                if (llmBlockedDeliveryTiles.has(key)) return [];
-                const m = llmDeliveryBonusTiles.get(key);
-                if (m) return [{ ...d, utility: d.utility * m }];
-                return [d];
-            }).sort((a, b) => b.utility - a.utility);
-        }
-
+        let desires = generateDesires(
+            myAgent, 
+            worldMap, 
+            carrying, 
+            spawnVisitLog, 
+            activeBlocked, 
+            llmDeliveryBonusTiles,
+            llmBlockedDeliveryTiles,
+            llmStackConstraints
+        );
 
         // ── Intention revision ────────────────────────────────────────────────
         const prevIntention  = currentIntention;
