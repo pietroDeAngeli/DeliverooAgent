@@ -121,6 +121,8 @@ User: "If you deliver parcels with a score higher than 10, you get no reward" �
 User: "Carrying parcels worth more than 20 gives 2x on delivery" → generate_stack_constraint
 User: "Move both agents to the neighborhood of (5,3) within distance 3 and wait for each other" → multi_agent_command
 User: "All agents must move to an odd-numbered row and wait" → multi_agent_command
+User: "All agents must move to an even-numbered row and wait" → multi_agent_command
+User: "Red light" → multi_agent_command
 User: "You can move again" → multi_agent_command
 User: "Green light, go!" → multi_agent_command
 User: "If a parcel is initially picked up by one agent and later delivered by the other agent, you will receive a 200 points bonus" → multi_agent_command
@@ -285,19 +287,20 @@ Given an instruction requiring coordination between multiple agents, extract the
 
 Return a JSON object:
 {
-  "type": "rendezvous" | "wait_odd_row" | "resume" | "parcel_handoff",
-  "x": number,        // only for rendezvous: target x coordinate
-  "y": number,        // only for rendezvous: target y coordinate
-  "maxDist": number,  // only for rendezvous: maximum distance from target (default 3)
-  "points": number    // for rendezvous and parcel_handoff: reward points (default 0)
+  "type": "rendezvous" | "wait_row" | "resume" | "parcel_handoff",
+  "parity": "odd" | "even",  // only for wait_row: which row parity to wait on
+  "x": number,               // only for rendezvous: target x coordinate
+  "y": number,               // only for rendezvous: target y coordinate
+  "maxDist": number,         // only for rendezvous: maximum distance from target (default 3)
+  "points": number           // for rendezvous and parcel_handoff: reward points (default 0)
 }
 
 Rules:
 - "rendezvous": agents must all navigate near a specific tile and wait for each other there. ONLY use this type when explicit numeric x,y coordinates are present in the text. If no coordinates are given, do NOT output rendezvous.
-- "wait_odd_row": agents must move to a tile in an odd-numbered row (y is odd) and stop
-- "resume": agents are allowed to move freely again (clears any wait or rendezvous hold)
+- "wait_row": agents must stop and hold position on a row of the specified parity. Use whenever the message signals a stop — whether via explicit colors ("red light"), imperative verbs ("stop", "halt", "freeze", "don't move", "hold"), or positional instructions ("wait on an odd row"). Set "parity" to "odd" if y must be odd-numbered, "even" if y must be even-numbered. Default to "odd" if unspecified.
+- "resume": agents are allowed to move freely again. Use whenever the message signals permission to move — whether via explicit colors ("green light"), imperative verbs ("go", "move", "resume", "start", "continue"), or permissive phrases ("you can move", "free to go", "carry on").
 - "parcel_handoff": one agent picks up a parcel and physically hands it to the other agent who then delivers it. Use this when the message describes ANY form of relay, transfer, exchange, passing, or collaborative delivery between the two agents, usually for a points bonus.
-- If the text says "wait for each other" or "meet" but contains NO explicit coordinates, return {"type": "wait_odd_row"} as the closest safe fallback.
+- If the text says "wait for each other" or "meet" but contains NO explicit coordinates, return {"type": "wait_row", "parity": "odd"} as the closest safe fallback.
 - Extract the reward points if mentioned (e.g. "500pts", "you will receive 300 points", "200 points bonus"). Default to 0 if not mentioned.
 - Return valid JSON only, no markdown, no explanation
 
@@ -309,7 +312,31 @@ Input: "Move both agents to the neighborhood of position 4,20 within a maximum d
 Output: {"type": "rendezvous", "x": 4, "y": 20, "maxDist": 3, "points": 0}
 
 Input: "All agents must move to an odd-numbered row and wait"
-Output: {"type": "wait_odd_row"}
+Output: {"type": "wait_row", "parity": "odd"}
+
+Input: "All agents must move to an even-numbered row and wait"
+Output: {"type": "wait_row", "parity": "even"}
+
+Input: "Red light — all agents stop on an odd row"
+Output: {"type": "wait_row", "parity": "odd"}
+
+Input: "Red light — stop on an even row"
+Output: {"type": "wait_row", "parity": "even"}
+
+Input: "Red light!"
+Output: {"type": "wait_row", "parity": "odd"}
+
+Input: "Stop! All agents freeze immediately."
+Output: {"type": "wait_row", "parity": "odd"}
+
+Input: "All agents halt and hold position."
+Output: {"type": "wait_row", "parity": "odd"}
+
+Input: "Don't move."
+Output: {"type": "wait_row", "parity": "odd"}
+
+Input: "Agents must stand still on an even row."
+Output: {"type": "wait_row", "parity": "even"}
 
 Input: "You can move again"
 Output: {"type": "resume"}
@@ -317,14 +344,20 @@ Output: {"type": "resume"}
 Input: "Green light, go!"
 Output: {"type": "resume"}
 
-Input: "Red light — all agents stop on an odd row"
-Output: {"type": "wait_odd_row"}
+Input: "Green light."
+Output: {"type": "resume"}
 
-Input: "If a parcel is initially picked up by one agent and later delivered by the other agent, you will receive a 200 points bonus."
-Output: {"type": "parcel_handoff", "points": 200}
+Input: "Resume moving."
+Output: {"type": "resume"}
 
-Input: "You get 500 extra points if one agent picks up a parcel and the partner delivers it."
-Output: {"type": "parcel_handoff", "points": 500}
+Input: "All agents start moving."
+Output: {"type": "resume"}
+
+Input: "Go! You are free to move."
+Output: {"type": "resume"}
+
+Input: "Continue your deliveries."
+Output: {"type": "resume"}
 
 Input: "If a parcel is initially picked up by one agent and later delivered by the other agent, you will receive a 200 points bonus."
 Output: {"type": "parcel_handoff", "points": 200}

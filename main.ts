@@ -120,19 +120,6 @@ if (USE_LLM_EFFECTIVE) {
     })();
 }
 
-function findNearestOddRowTile(): Position | null {
-    if (!myAgent || !worldMap) return null;
-    let best: Position | null = null;
-    let bestDist = Infinity;
-    for (const key of worldMap.tiles.keys()) {
-        const [x, y] = key.split(',').map(Number);
-        if (y % 2 === 1) {
-            const dist = Math.abs(x - myAgent.pos.x) + Math.abs(y - myAgent.pos.y);
-            if (dist < bestDist) { bestDist = dist; best = { x, y }; }
-        }
-    }
-    return best;
-}
 
 function computeMeetingPoint(posA: Position, posB: Position, blocked: Set<string>): Position | null {
     if (!worldMap) return null;
@@ -233,18 +220,18 @@ function applyLLMUpdates(updates: LLMUpdate): void {
             const utility = cmd.points > 0 ? cmd.points : 9999;
             llmPendingMissions.push(new Desire('rendezvous', cmd.x, cmd.y, utility));
             console.log(`[Multi-agent] rendezvous at (${cmd.x},${cmd.y}) maxDist=${rendezvousMaxDist} pts=${utility}`);
-        } else if (cmd.type === 'wait_odd_row') {
-            if (llmActiveMission?.type !== 'wait_odd_row' && !llmPendingMissions.some(m => m.type === 'wait_odd_row')) {
-                llmPendingMissions.push(new Desire('wait_odd_row', 0, 0, 9999));
-                console.log('[Multi-agent] wait_odd_row queued');
+        } else if (cmd.type === 'wait_row') {
+            if (llmActiveMission?.type !== 'wait_row' && !llmPendingMissions.some(m => m.type === 'wait_row')) {
+                llmPendingMissions.push(new Desire('wait_row', 0, 0, 9999, cmd.parity));
+                console.log(`[Multi-agent] wait_row (${cmd.parity}) queued`);
             }
         } else if (cmd.type === 'resume') {
-            if (llmActiveMission?.type === 'wait_odd_row') {
+            if (llmActiveMission?.type === 'wait_row') {
                 llmActiveMission = null;
                 clearIntention();
-                console.log('[Multi-agent] resume: cleared wait_odd_row mission');
+                console.log('[Multi-agent] resume: cleared wait_row mission');
             }
-            const idx = llmPendingMissions.findIndex(m => m.type === 'wait_odd_row');
+            const idx = llmPendingMissions.findIndex(m => m.type === 'wait_row');
             if (idx >= 0) llmPendingMissions.splice(idx, 1);
         } else if (cmd.type === 'parcel_handoff') {
             const utility = cmd.points > 0 ? cmd.points : 9999;
@@ -900,19 +887,24 @@ async function bdiStep(): Promise<void> {
             }
             await stepTowards(currentPath[0], utils.nextPosition(myAgent.pos, currentPath[0]));
 
-        } else if (currentIntention.type === 'wait_odd_row') {
-            if (myAgent.pos.y % 2 === 1) {
-                // On an odd row — hold position until resume command
-                debug(`[Wait] Holding at odd row y=${myAgent.pos.y}`);
+        } else if (currentIntention.type === 'wait_row') {
+            const parity = currentIntention.parity ?? 'odd';
+            const onTargetRow = parity === 'odd' ? myAgent.pos.y % 2 === 1 : myAgent.pos.y % 2 === 0;
+            if (onTargetRow) {
+                debug(`[Wait] Already on position - holding at (${myAgent.pos.x},${myAgent.pos.y}) [${parity} row]`);
                 return;
             }
-            // Navigate to nearest odd-row tile
-            const oddTarget = findNearestOddRowTile();
-            if (!oddTarget) { clearIntention(); return; }
-            if (!currentPath?.length)
-                currentPath = await planPath(myAgent.pos, oddTarget);
-            if (!currentPath?.length) { clearIntention(); return; }
-            await stepTowards(currentPath[0], utils.nextPosition(myAgent.pos, currentPath[0]));
+            // One step up or down is enough — adjacent rows always alternate parity
+            const candidates: Array<{ dir: string; pos: Position }> = [
+                { dir: 'up',   pos: { x: myAgent.pos.x, y: myAgent.pos.y + 1 } },
+                { dir: 'down', pos: { x: myAgent.pos.x, y: myAgent.pos.y - 1 } },
+            ];
+            for (const { dir, pos } of candidates) {
+                if (worldMap.tiles.has(`${pos.x},${pos.y}`)) {
+                    await stepTowards(dir, pos);
+                    return;
+                }
+            }
 
         } else if (currentIntention.type === 'handoff_approach') {
             const meetPos = { x: currentIntention.x_target, y: currentIntention.y_target };
@@ -1021,8 +1013,8 @@ async function bdiStep(): Promise<void> {
         console.error(err);
     } finally {
         // Physical stuck detection: block intention if agent held same intention but didn't move
-        // Skip for wait_odd_row and rendezvous-in-range (agent intentionally stays put)
-        if (prevKey && myAgent && currentIntention?.type !== 'wait_odd_row' && !(currentIntention?.type === 'rendezvous' && rendezvousInRange)) {
+        // Skip for wait_row and rendezvous-in-range (agent intentionally stays put)
+        if (prevKey && myAgent && currentIntention?.type !== 'wait_row' && !(currentIntention?.type === 'rendezvous' && rendezvousInRange)) {
             const didMove    = myAgent.pos.x !== prevPos.x || myAgent.pos.y !== prevPos.y;
             const currentKey = currentIntention
                 ? `${currentIntention.type}:${currentIntention.x_target},${currentIntention.y_target}`

@@ -38,26 +38,29 @@ export function effectiveDeliveryMultiplier(
     return 1;
 }
 
-export type DesireType = 
-    | 'go_pickup' 
-    | 'go_delivery' 
-    | 'explore' 
+export type DesireType =
+    | 'go_pickup'
+    | 'go_delivery'
+    | 'explore'
     | 'go_to'
     | 'rendezvous'
-    | 'wait_odd_row'
+    | 'wait_row'
     | 'handoff_approach'
     | 'handoff_deliverer_approach';
+
 export class Desire {
     type: DesireType;
     x_target: number;
     y_target: number;
     utility: number;
+    parity?: 'odd' | 'even'; // only used for wait_row
 
-    constructor(type: DesireType, x_target: number, y_target: number, utility: number) {
+    constructor(type: DesireType, x_target: number, y_target: number, utility: number, parity?: 'odd' | 'even') {
         this.type     = type;
         this.x_target = x_target;
         this.y_target = y_target;
         this.utility  = utility;
+        this.parity   = parity;
     }
 }
 

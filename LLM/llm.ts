@@ -11,7 +11,7 @@ const MODEL = process.env.LOCAL_MODEL;
 
 export type MultiAgentCommand =
     | { type: 'rendezvous'; x: number; y: number; maxDist: number; points: number }
-    | { type: 'wait_odd_row' }
+    | { type: 'wait_row'; parity: 'odd' | 'even' }
     | { type: 'resume' }
     | { type: 'parcel_handoff'; points: number };
 
@@ -163,8 +163,9 @@ export class LLMClient {
             const parsed = JSON.parse(this.stripMarkdown(response));
             if (parsed.type === 'rendezvous') {
                 return { type: 'rendezvous', x: Number(parsed.x), y: Number(parsed.y), maxDist: Number(parsed.maxDist ?? 3), points: Number(parsed.points ?? 0) };
-            } else if (parsed.type === 'wait_odd_row') {
-                return { type: 'wait_odd_row' };
+            } else if (parsed.type === 'wait_row') {
+                const parity: 'odd' | 'even' = parsed.parity === 'even' ? 'even' : 'odd';
+                return { type: 'wait_row', parity };
             } else if (parsed.type === 'resume') {
                 return { type: 'resume' };
             } else if (parsed.type === 'parcel_handoff') {
