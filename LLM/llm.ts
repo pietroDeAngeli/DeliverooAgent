@@ -10,9 +10,10 @@ const apiKey = process.env.LITELLM_API_KEY;
 const MODEL = process.env.LOCAL_MODEL;
 
 export type MultiAgentCommand =
-    | { type: 'rendezvous'; x: number; y: number; maxDist: number }
-    | { type: 'wait_odd_row' }
-    | { type: 'resume' };
+    | { type: 'rendezvous'; x: number; y: number; maxDist: number; points: number }
+    | { type: 'wait_row'; parity: 'odd' | 'even' }
+    | { type: 'resume' }
+    | { type: 'parcel_handoff'; points: number };
 
 export type LLMUpdate = {
     goToTiles: Array<{ x: number; y: number; utility: number }>;
@@ -20,7 +21,7 @@ export type LLMUpdate = {
     deliveryConstraints: Array<{ direction: string; points: number }>;
     deliveryBonusTiles: Array<{ x: number; y: number; multiplier: number }>; // "x,y" → multiplier
     blockedDeliveryTiles: string[]; // "x,y" format — delivery target only, not traversal
-    stackConstraints: Array<{ count: number; operator: string; multiplier: number }>;
+    stackConstraints: Array<{ count: number; operator: string; multiplier: number; mode?: string }>;
     multiAgentCommand?: MultiAgentCommand;
 };
 
@@ -161,11 +162,14 @@ export class LLMClient {
         try {
             const parsed = JSON.parse(this.stripMarkdown(response));
             if (parsed.type === 'rendezvous') {
-                return { type: 'rendezvous', x: Number(parsed.x), y: Number(parsed.y), maxDist: Number(parsed.maxDist ?? 3) };
-            } else if (parsed.type === 'wait_odd_row') {
-                return { type: 'wait_odd_row' };
+                return { type: 'rendezvous', x: Number(parsed.x), y: Number(parsed.y), maxDist: Number(parsed.maxDist ?? 3), points: Number(parsed.points ?? 0) };
+            } else if (parsed.type === 'wait_row') {
+                const parity: 'odd' | 'even' = parsed.parity === 'even' ? 'even' : 'odd';
+                return { type: 'wait_row', parity };
             } else if (parsed.type === 'resume') {
                 return { type: 'resume' };
+            } else if (parsed.type === 'parcel_handoff') {
+                return { type: 'parcel_handoff', points: Number(parsed.points ?? 0) };
             }
             return null;
         } catch (error) {
@@ -174,7 +178,7 @@ export class LLMClient {
         }
     }
 
-    private async extractStackConstraint(text: string): Promise<{ count: number; operator: string; multiplier: number } | null> {
+    private async extractStackConstraint(text: string): Promise<{ count: number; operator: string; multiplier: number; mode?: string } | null> {
         const messages = [
             { role: "system", content: prompts.STACK_CONSTRAINT_PROMPT },
             { role: "user", content: text },
@@ -306,9 +310,9 @@ export class LLMClient {
                     updates.stackConstraints.push(constraint);
                 }
             } else if (action === "multi_agent_command") {
-                const cmd = await this.extractMultiAgentCommand(subMsg);
-                if (cmd) {
-                    updates.multiAgentCommand = cmd;
+                if (!updates.multiAgentCommand) {
+                    const cmd = await this.extractMultiAgentCommand(subMsg);
+                    if (cmd) updates.multiAgentCommand = cmd;
                 }
             }
         }

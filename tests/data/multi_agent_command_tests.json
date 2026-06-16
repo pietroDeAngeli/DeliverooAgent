@@ -1,0 +1,155 @@
+[
+  {
+    "id": 1,
+    "description": "Red light with explicit odd parity",
+    "input": "Red light — all agents stop on an odd row",
+    "expected_type": "wait_row",
+    "expected_parity": "odd"
+  },
+  {
+    "id": 2,
+    "description": "Red light with explicit even parity",
+    "input": "Red light — stop on an even row",
+    "expected_type": "wait_row",
+    "expected_parity": "even"
+  },
+  {
+    "id": 3,
+    "description": "Bare red light — default parity odd",
+    "input": "Red light!",
+    "expected_type": "wait_row",
+    "expected_parity": "odd"
+  },
+  {
+    "id": 4,
+    "description": "Explicit stop imperative — default parity odd",
+    "input": "Stop! All agents freeze immediately.",
+    "expected_type": "wait_row",
+    "expected_parity": "odd"
+  },
+  {
+    "id": 5,
+    "description": "Halt and hold — default parity odd",
+    "input": "All agents halt and hold position.",
+    "expected_type": "wait_row",
+    "expected_parity": "odd"
+  },
+  {
+    "id": 6,
+    "description": "Don't move instruction — default parity odd",
+    "input": "Don't move.",
+    "expected_type": "wait_row",
+    "expected_parity": "odd"
+  },
+  {
+    "id": 7,
+    "description": "Stand still on even row",
+    "input": "Agents must stand still on an even row.",
+    "expected_type": "wait_row",
+    "expected_parity": "even"
+  },
+  {
+    "id": 8,
+    "description": "Move to odd-numbered row and wait",
+    "input": "All agents must move to an odd-numbered row and wait",
+    "expected_type": "wait_row",
+    "expected_parity": "odd"
+  },
+  {
+    "id": 9,
+    "description": "Move to even-numbered row and wait",
+    "input": "All agents must move to an even-numbered row and wait",
+    "expected_type": "wait_row",
+    "expected_parity": "even"
+  },
+  {
+    "id": 10,
+    "description": "Green light — bare signal",
+    "input": "Green light.",
+    "expected_type": "resume"
+  },
+  {
+    "id": 11,
+    "description": "Green light go",
+    "input": "Green light, go!",
+    "expected_type": "resume"
+  },
+  {
+    "id": 12,
+    "description": "Permissive move again phrase",
+    "input": "You can move again",
+    "expected_type": "resume"
+  },
+  {
+    "id": 13,
+    "description": "Resume moving imperative",
+    "input": "Resume moving.",
+    "expected_type": "resume"
+  },
+  {
+    "id": 14,
+    "description": "Start moving imperative",
+    "input": "All agents start moving.",
+    "expected_type": "resume"
+  },
+  {
+    "id": 15,
+    "description": "Free to move permissive",
+    "input": "Go! You are free to move.",
+    "expected_type": "resume"
+  },
+  {
+    "id": 16,
+    "description": "Continue deliveries",
+    "input": "Continue your deliveries.",
+    "expected_type": "resume"
+  },
+  {
+    "id": 17,
+    "description": "Rendezvous with coordinates and points",
+    "input": "Move both agents to the neighborhood of position (5,3) within a maximum distance of 3 and have them wait for each other. You will receive 500pts.",
+    "expected_type": "rendezvous",
+    "expected_x": 5,
+    "expected_y": 3,
+    "expected_max_dist": 3,
+    "expected_points": 500
+  },
+  {
+    "id": 18,
+    "description": "Rendezvous with coordinates no points",
+    "input": "Move both agents to the neighborhood of position 4,20 within a maximum distance of 3 and have them wait for each other",
+    "expected_type": "rendezvous",
+    "expected_x": 4,
+    "expected_y": 20,
+    "expected_max_dist": 3,
+    "expected_points": 0
+  },
+  {
+    "id": 19,
+    "description": "Parcel handoff with points",
+    "input": "If a parcel is initially picked up by one agent and later delivered by the other agent, you will receive a 200 points bonus.",
+    "expected_type": "parcel_handoff",
+    "expected_points": 200
+  },
+  {
+    "id": 20,
+    "description": "Parcel handoff large bonus",
+    "input": "You get 500 extra points if one agent picks up a parcel and the partner delivers it.",
+    "expected_type": "parcel_handoff",
+    "expected_points": 500
+  },
+  {
+    "id": 21,
+    "description": "Parcel handoff pass phrasing",
+    "input": "Pass the package to the other agent for a 50 pt reward.",
+    "expected_type": "parcel_handoff",
+    "expected_points": 50
+  },
+  {
+    "id": 22,
+    "description": "Parcel handoff relay no points",
+    "input": "Relay the delivery! Have agent 1 transfer the box to agent 2.",
+    "expected_type": "parcel_handoff",
+    "expected_points": 0
+  }
+]

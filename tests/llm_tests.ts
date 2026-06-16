@@ -125,6 +125,8 @@ function makeTestable(client: LLMClient) {
             c.generateDesire(text),
         extractStackConstraint: (text: string): Promise<{ count: number; operator: string; multiplier: number } | null> =>
             c.extractStackConstraint(text),
+        extractMultiAgentCommand: (text: string): Promise<{ type: string; parity?: string; x?: number; y?: number; maxDist?: number; points?: number } | null> =>
+            c.extractMultiAgentCommand(text),
         decideNextAction: (userInput: string): Promise<string> => c.decideNextAction(userInput),
     };
 }
@@ -461,7 +463,49 @@ async function runStackConstraintTests(client: TestableClient): Promise<Category
     return buildResult("extractStackConstraint", details, totalLatency);
 }
 
-/** 10 – tools (calculate, getCurrentTime, getMyPosition) */
+/** 10 – extractMultiAgentCommand (LLM) */
+async function runMultiAgentCommandTests(client: TestableClient): Promise<CategoryResult> {
+    const tests: any[] = loadJson("multi_agent_command_tests.json");
+    const details: TestDetail[] = [];
+    let totalLatency = 0;
+
+    for (const t of tests) {
+        const start = Date.now();
+        let actual = "";
+        let passed = false;
+        let error: string | undefined;
+        try {
+            const result = await client.extractMultiAgentCommand(t.input as string);
+            actual = JSON.stringify(result);
+
+            if (result === null) {
+                passed = false;
+            } else {
+                const typeOk = result.type === t.expected_type;
+                const parityOk = t.expected_parity !== undefined ? result.parity === t.expected_parity : true;
+                const xOk = t.expected_x !== undefined ? result.x === t.expected_x : true;
+                const yOk = t.expected_y !== undefined ? result.y === t.expected_y : true;
+                const maxDistOk = t.expected_max_dist !== undefined ? result.maxDist === t.expected_max_dist : true;
+                const pointsOk = t.expected_points !== undefined ? result.points === t.expected_points : true;
+                passed = typeOk && parityOk && xOk && yOk && maxDistOk && pointsOk;
+            }
+        } catch (e) {
+            error = String(e);
+        }
+        const latencyMs = elapsed(start);
+        totalLatency += latencyMs;
+        const expectedPreview = `type=${t.expected_type}` +
+            (t.expected_parity ? ` parity=${t.expected_parity}` : "") +
+            (t.expected_x !== undefined ? ` x=${t.expected_x} y=${t.expected_y}` : "") +
+            (t.expected_points !== undefined ? ` pts=${t.expected_points}` : "");
+        const detail: TestDetail = { id: t.id, description: t.description, passed, latencyMs, actual, error };
+        details.push(detail);
+        printTestLine(detail, String(t.input), expectedPreview);
+    }
+    return buildResult("extractMultiAgentCommand", details, totalLatency);
+}
+
+/** 11 – tools (calculate, getCurrentTime, getMyPosition) */
 async function runToolsTests(): Promise<CategoryResult> {
     const data: any = loadJson("tools_tests.json");
     const details: TestDetail[] = [];
@@ -666,6 +710,7 @@ const CATEGORY_FILE: Record<string, string> = {
     extractDeliveryConstraint: "delivery_constraint_tests.json",
     generateDesire: "generate_desire_tests.json",
     extractStackConstraint: "stack_constraint_tests.json",
+    extractMultiAgentCommand: "multi_agent_command_tests.json",
     decideNextAction: "decide_action_tests.json",
 };
 
@@ -754,11 +799,11 @@ async function main(): Promise<void> {
     const results: CategoryResult[] = [];
 
     // Deterministic tests — always run
-    console.log(color("[1/10]", ANSI.bold) + " extractAction (deterministic)");
+    console.log(color("[1/11]", ANSI.bold) + " extractAction (deterministic)");
     const clientForAction = makeTestable(new LLMClient());
     results.push(await runActionExtractionTests(clientForAction));
 
-    console.log(color("[2/10]", ANSI.bold) + " tools (calculate / getCurrentTime / getMyPosition)");
+    console.log(color("[2/11]", ANSI.bold) + " tools (calculate / getCurrentTime / getMyPosition)");
     results.push(await runToolsTests());
 
     // LLM-backed tests — skip if SKIP_LIVE=true
@@ -767,28 +812,31 @@ async function main(): Promise<void> {
     } else {
         const client = makeTestable(new LLMClient());
 
-        console.log(color("[3/10]", ANSI.bold) + " splitMessage");
+        console.log(color("[3/11]", ANSI.bold) + " splitMessage");
         results.push(await runSplitterTests(client));
 
-        console.log(color("[4/10]", ANSI.bold) + " extractCityName");
+        console.log(color("[4/11]", ANSI.bold) + " extractCityName");
         results.push(await runCityNameTests(client));
 
-        console.log(color("[5/10]", ANSI.bold) + " extractMathExpression");
+        console.log(color("[5/11]", ANSI.bold) + " extractMathExpression");
         results.push(await runMathExpressionTests(client));
 
-        console.log(color("[6/10]", ANSI.bold) + " planTasks");
+        console.log(color("[6/11]", ANSI.bold) + " planTasks");
         results.push(await runPlanTasksTests(client));
 
-        console.log(color("[7/10]", ANSI.bold) + " extractDeliveryConstraint");
+        console.log(color("[7/11]", ANSI.bold) + " extractDeliveryConstraint");
         results.push(await runDeliveryConstraintTests(client));
 
-        console.log(color("[8/10]", ANSI.bold) + " generateDesire");
+        console.log(color("[8/11]", ANSI.bold) + " generateDesire");
         results.push(await runGenerateDesireTests(client));
 
-        console.log(color("[9/10]", ANSI.bold) + " extractStackConstraint");
+        console.log(color("[9/11]", ANSI.bold) + " extractStackConstraint");
         results.push(await runStackConstraintTests(client));
 
-        console.log(color("[10/10]", ANSI.bold) + " decideNextAction");
+        console.log(color("[10/11]", ANSI.bold) + " extractMultiAgentCommand");
+        results.push(await runMultiAgentCommandTests(client));
+
+        console.log(color("[11/11]", ANSI.bold) + " decideNextAction");
         results.push(await runDecideActionTests(client));
     }
 
