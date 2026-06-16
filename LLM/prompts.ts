@@ -7,8 +7,7 @@ Tool Usage Rules:
 5. **common_knowledge**: answer a general factual question unrelated to the game (history, science, geography, trivia, etc.).
 6. **generate_delivery_constraint**: set a delivery preference about WHERE to DROP packages, expressed as a DIRECTION (leftmost / rightmost / topmost / bottommost). Only use this for drop-off zone instructions, never for movement goals.
 7. **generate_stack_constraint**: set a delivery reward rule based on either HOW MANY parcels are carried (e.g. "exactly 3 parcels → double reward") OR the total SCORE/VALUE of carried parcels at delivery time (e.g. "score higher than 10 → no reward"). Use when the instruction specifies a parcel count OR a carried reward threshold that affects the delivery multiplier.
-8. **multi_agent_command**: coordinate MULTIPLE agents together — meeting at a location, waiting in a specific row type, or resuming after a hold. Use when the message explicitly involves "both agents", "all agents", "each other", meeting/rendezvous, or signals like "red light / green light", "go", "stop", "resume".
-
+8. **multi_agent_command**: coordinate MULTIPLE agents together — meeting at a location, waiting in a specific row type, resuming after a hold, or handing off/relaying a parcel between agents. Use when the message explicitly involves "both agents", "all agents", "each other", meeting/rendezvous, signals like "red light / green light", "go", "stop", "resume", or ANY collaborative delivery (e.g., passing, transferring, exchanging, or relaying a parcel from one agent to the other for a bonus).
 Key distinctions:
 - Any request with a specific coordinate (x, y) and movement/avoidance → **generate_desire**
 - Any request about delivery direction (leftmost/rightmost/topmost/bottommost) → **generate_delivery_constraint**
@@ -16,7 +15,7 @@ Key distinctions:
 - Any request where the carried parcel SCORE/VALUE threshold affects the reward multiplier → **generate_stack_constraint**
 - Any general factual question (capitals, history, science) → **common_knowledge**
 - Any numerical expression to compute → **calculate**
-- Any coordination between MULTIPLE agents (rendezvous, synchronized wait, resume signal) → **multi_agent_command**
+- Any coordination between MULTIPLE agents (rendezvous, synchronized wait, resume signal, parcel handoff between agents) → **multi_agent_command**
 `;
 
 export const ACTIONS: string[] = ["calculate", "get_current_time", "get_my_position", "generate_desire", "common_knowledge", "generate_delivery_constraint", "generate_stack_constraint", "multi_agent_command"];
@@ -48,7 +47,7 @@ Rules:
 - Phrases like "to get +10pts", "for 5 points", "with speed 2", or "using X" are modifiers, not separate requests.
 - CRITICAL: If two parts of the message are semantically dependent (answering one requires knowing the answer to the other), do NOT split them — keep them as a single request.
 - CRITICAL: A delivery tile and its reward multiplier are semantically inseparable — NEVER split them into separate sub-requests.
-- CRITICAL: Multi-agent coordination commands (rendezvous, meeting at a location, waiting for each other) must NEVER be split. Phrases like "and wait for each other", "and meet there", "and have them wait" are inseparable modifiers of the same coordination command — keep them in the same sub-request as the location.
+- CRITICAL: Multi-agent coordination commands (rendezvous, meeting at a location, waiting for each other, parcel handoff bonus) must NEVER be split. Phrases like "and wait for each other", "and meet there", "and have them wait", "picked up by one agent and delivered by the other", "pass the package", "relay the delivery", or "transfer the parcel" are inseparable parts of a single coordination command. Do not split a collaborative handoff into a separate pickup and delivery.
 - Reward announcements like "You will receive Xpts" or "you get Xpts" attached to a coordination command are NOT separate requests — discard them or keep them attached, never split them into a separate actionable sub-request.
 - SPECIAL CASE: If a single delivery reward applies to MULTIPLE tiles (e.g. "deliver in (x1,y1) or (x2,y2) for Nx reward"), split by tile but include the full reward in EACH sub-request.
 
@@ -79,6 +78,9 @@ Answer: ["Delivering to (1,2) gives 0 pts", "Delivering to (3,4) gives 0 pts"]
 
 Message: "Move both agents to the neighborhood of position 4,20 within a maximum distance of 3, and have them wait for each other. You will receive 500pts."
 Answer: ["Move both agents to the neighborhood of position 4,20 within a maximum distance of 3 and have them wait for each other"]
+
+Message: "You get 100 extra points if you relay the package: one agent grabs it and passes it to their partner to drop off."
+Answer: ["You get 100 extra points if you relay the package: one agent grabs it and passes it to their partner to drop off."]
 `.trim();
 
 export const ORCHESTRATOR_PROMPT = `
@@ -121,6 +123,11 @@ User: "Move both agents to the neighborhood of (5,3) within distance 3 and wait 
 User: "All agents must move to an odd-numbered row and wait" → multi_agent_command
 User: "You can move again" → multi_agent_command
 User: "Green light, go!" → multi_agent_command
+User: "If a parcel is initially picked up by one agent and later delivered by the other agent, you will receive a 200 points bonus" → multi_agent_command
+User: "If a parcel is initially picked up by one agent and later delivered by the other agent, you will receive a 200 points bonus" → multi_agent_command
+User: "Pass the package to your partner for an extra 50 pts" → multi_agent_command
+User: "Relay deliveries between agents give triple points" → multi_agent_command
+User: "Transfer the parcel from agent 1 to agent 2" → multi_agent_command
 `.trim();
 
 export const GET_CITY_PROMPT = `You are a helpful assistant that extracts city names from user input.
@@ -278,19 +285,20 @@ Given an instruction requiring coordination between multiple agents, extract the
 
 Return a JSON object:
 {
-  "type": "rendezvous" | "wait_odd_row" | "resume",
+  "type": "rendezvous" | "wait_odd_row" | "resume" | "parcel_handoff",
   "x": number,        // only for rendezvous: target x coordinate
   "y": number,        // only for rendezvous: target y coordinate
   "maxDist": number,  // only for rendezvous: maximum distance from target (default 3)
-  "points": number    // only for rendezvous: reward points for completing the task (default 0)
+  "points": number    // for rendezvous and parcel_handoff: reward points (default 0)
 }
 
 Rules:
 - "rendezvous": agents must all navigate near a specific tile and wait for each other there. ONLY use this type when explicit numeric x,y coordinates are present in the text. If no coordinates are given, do NOT output rendezvous.
 - "wait_odd_row": agents must move to a tile in an odd-numbered row (y is odd) and stop
 - "resume": agents are allowed to move freely again (clears any wait or rendezvous hold)
+- "parcel_handoff": one agent picks up a parcel and physically hands it to the other agent who then delivers it. Use this when the message describes ANY form of relay, transfer, exchange, passing, or collaborative delivery between the two agents, usually for a points bonus.
 - If the text says "wait for each other" or "meet" but contains NO explicit coordinates, return {"type": "wait_odd_row"} as the closest safe fallback.
-- Extract the reward points if mentioned (e.g. "500pts", "you will receive 300 points"). Default to 0 if not mentioned.
+- Extract the reward points if mentioned (e.g. "500pts", "you will receive 300 points", "200 points bonus"). Default to 0 if not mentioned.
 - Return valid JSON only, no markdown, no explanation
 
 Examples:
@@ -311,6 +319,27 @@ Output: {"type": "resume"}
 
 Input: "Red light — all agents stop on an odd row"
 Output: {"type": "wait_odd_row"}
+
+Input: "If a parcel is initially picked up by one agent and later delivered by the other agent, you will receive a 200 points bonus."
+Output: {"type": "parcel_handoff", "points": 200}
+
+Input: "You get 500 extra points if one agent picks up a parcel and the partner delivers it."
+Output: {"type": "parcel_handoff", "points": 500}
+
+Input: "If a parcel is initially picked up by one agent and later delivered by the other agent, you will receive a 200 points bonus."
+Output: {"type": "parcel_handoff", "points": 200}
+
+Input: "You get 500 extra points if one agent picks up a parcel and the partner delivers it."
+Output: {"type": "parcel_handoff", "points": 500}
+
+Input: "Pass the package to the other agent for a 50 pt reward."
+Output: {"type": "parcel_handoff", "points": 50}
+
+Input: "Relay the delivery! Have agent 1 transfer the box to agent 2."
+Output: {"type": "parcel_handoff", "points": 0}
+
+Input: "Collaborative deliveries (one grabs, one drops) yield a +150 multiplier."
+Output: {"type": "parcel_handoff", "points": 150}
 `.trim();
 
 export const STACK_CONSTRAINT_PROMPT = `
