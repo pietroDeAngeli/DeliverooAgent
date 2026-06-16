@@ -71,6 +71,8 @@ const llmStackConstraints: StackConstraint[] = [];       // stack-size → rewar
 // ── Multi-agent state ──────────────────────────────────────────────────────────
 let partnerAgentId: string | null = process.env.PARTNER_ID ?? null;
 let rendezvousMaxDist = 3;
+let rendezvousInRange = false;      // self is within range of rendezvous target
+let rendezvousPartnerArrived = false; // partner signalled its arrival
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -180,8 +182,11 @@ function applyLLMUpdates(updates: LLMUpdate): void {
         const cmd = updates.multiAgentCommand;
         if (cmd.type === 'rendezvous') {
             rendezvousMaxDist = cmd.maxDist;
-            llmPendingMissions.push(new Desire('rendezvous', cmd.x, cmd.y, 9999));
-            console.log(`[Multi-agent] rendezvous at (${cmd.x},${cmd.y}) maxDist=${rendezvousMaxDist}`);
+            rendezvousInRange = false;
+            rendezvousPartnerArrived = false;
+            const utility = cmd.points > 0 ? cmd.points : 9999;
+            llmPendingMissions.push(new Desire('rendezvous', cmd.x, cmd.y, utility));
+            console.log(`[Multi-agent] rendezvous at (${cmd.x},${cmd.y}) maxDist=${rendezvousMaxDist} pts=${utility}`);
         } else if (cmd.type === 'wait_odd_row') {
             if (llmActiveMission?.type !== 'wait_odd_row' && !llmPendingMissions.some(m => m.type === 'wait_odd_row')) {
                 llmPendingMissions.push(new Desire('wait_odd_row', 0, 0, 9999));
@@ -375,6 +380,17 @@ socket.onMsg( async (id: string, name: string, msg: any, reply: ((response: any)
                 if (peerMsg.kind === 'LLM_UPDATE') {
                     console.log('[Multi-agent] Received LLM update from master, applying to BDI');
                     applyLLMUpdates(peerMsg.updates);
+                } else if (peerMsg.kind === 'RENDEZVOUS_ARRIVED') {
+                    console.log('[Multi-agent] Partner arrived at rendezvous point');
+                    rendezvousPartnerArrived = true;
+                    // If we're already in range waiting, complete now
+                    if (rendezvousInRange && llmActiveMission?.type === 'rendezvous') {
+                        console.log('[Rendezvous] Both agents in range, completing mission');
+                        completeActiveMission('rendezvous-both-arrived');
+                        clearIntention();
+                        rendezvousInRange = false;
+                        rendezvousPartnerArrived = false;
+                    }
                 } else {
                     debug(`[Multi-agent] Peer message has unexpected kind: ${peerMsg.kind}`);
                 }
@@ -686,9 +702,27 @@ async function bdiStep(): Promise<void> {
         } else if (currentIntention.type === 'rendezvous') {
             const dist = utils.get_distance(myAgent.pos, { x: currentIntention.x_target, y: currentIntention.y_target });
             if (dist <= rendezvousMaxDist) {
-                console.log(`[Rendezvous] In range at (${myAgent.pos.x},${myAgent.pos.y}), dist=${dist}`);
-                if (sameMission(currentIntention, llmActiveMission)) completeActiveMission('rendezvous-reached');
-                clearIntention();
+                if (!rendezvousInRange) {
+                    rendezvousInRange = true;
+                    console.log(`[Rendezvous] In range at (${myAgent.pos.x},${myAgent.pos.y}), dist=${dist}, signaling partner`);
+                    if (partnerAgentId) {
+                        socket.emitSay(partnerAgentId, JSON.stringify({ kind: 'RENDEZVOUS_ARRIVED' }))
+                            .catch((err: unknown) => console.warn('[Rendezvous] Failed to signal partner:', err));
+                    } else {
+                        // No partner - complete immediately
+                        rendezvousPartnerArrived = true;
+                    }
+                }
+                if (rendezvousPartnerArrived) {
+                    console.log(`[Rendezvous] Both agents in range, completing mission`);
+                    if (sameMission(currentIntention, llmActiveMission)) completeActiveMission('rendezvous-both-arrived');
+                    clearIntention();
+                    rendezvousInRange = false;
+                    rendezvousPartnerArrived = false;
+                    return;
+                }
+                // Waiting for partner — hold position
+                debug(`[Rendezvous] Holding at (${myAgent.pos.x},${myAgent.pos.y}), waiting for partner`);
                 return;
             }
             if (!currentPath?.length)
@@ -697,6 +731,7 @@ async function bdiStep(): Promise<void> {
                 const failed = currentIntention;
                 handleNoPath(`rendezvous:${currentIntention.x_target},${currentIntention.y_target}`, 'rendezvous target');
                 if (sameMission(failed, llmActiveMission)) completeActiveMission('no-path');
+                rendezvousInRange = false;
                 return;
             }
             await stepTowards(currentPath[0], utils.nextPosition(myAgent.pos, currentPath[0]));
@@ -720,8 +755,8 @@ async function bdiStep(): Promise<void> {
         console.error(err);
     } finally {
         // Physical stuck detection: block intention if agent held same intention but didn't move
-        // Skip for wait_odd_row — the agent intentionally holds position on an odd row
-        if (prevKey && myAgent && currentIntention?.type !== 'wait_odd_row') {
+        // Skip for wait_odd_row and rendezvous-in-range — the agent intentionally holds position
+        if (prevKey && myAgent && currentIntention?.type !== 'wait_odd_row' && !(currentIntention?.type === 'rendezvous' && rendezvousInRange)) {
             const didMove    = myAgent.pos.x !== prevPos.x || myAgent.pos.y !== prevPos.y;
             const currentKey = currentIntention
                 ? `${currentIntention.type}:${currentIntention.x_target},${currentIntention.y_target}`

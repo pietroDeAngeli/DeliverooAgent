@@ -47,6 +47,8 @@ Rules:
 - Phrases like "to get +10pts", "for 5 points", "with speed 2", or "using X" are modifiers, not separate requests.
 - CRITICAL: If two parts of the message are semantically dependent (answering one requires knowing the answer to the other), do NOT split them — keep them as a single request.
 - CRITICAL: A delivery tile and its reward multiplier are semantically inseparable — NEVER split them into separate sub-requests.
+- CRITICAL: Multi-agent coordination commands (rendezvous, meeting at a location, waiting for each other) must NEVER be split. Phrases like "and wait for each other", "and meet there", "and have them wait" are inseparable modifiers of the same coordination command — keep them in the same sub-request as the location.
+- Reward announcements like "You will receive Xpts" or "you get Xpts" attached to a coordination command are NOT separate requests — discard them or keep them attached, never split them into a separate actionable sub-request.
 - SPECIAL CASE: If a single delivery reward applies to MULTIPLE tiles (e.g. "deliver in (x1,y1) or (x2,y2) for Nx reward"), split by tile but include the full reward in EACH sub-request.
 
 Examples:
@@ -73,6 +75,9 @@ Answer: ["Every time you deliver in (3,4) you get 5x pts", "Every time you deliv
 
 Message: "Delivering to (1,2) or (3,4) gives 0 pts"
 Answer: ["Delivering to (1,2) gives 0 pts", "Delivering to (3,4) gives 0 pts"]
+
+Message: "Move both agents to the neighborhood of position 4,20 within a maximum distance of 3, and have them wait for each other. You will receive 500pts."
+Answer: ["Move both agents to the neighborhood of position 4,20 within a maximum distance of 3 and have them wait for each other"]
 `.trim();
 
 export const ORCHESTRATOR_PROMPT = `
@@ -273,18 +278,24 @@ Return a JSON object:
   "type": "rendezvous" | "wait_odd_row" | "resume",
   "x": number,        // only for rendezvous: target x coordinate
   "y": number,        // only for rendezvous: target y coordinate
-  "maxDist": number   // only for rendezvous: maximum distance from target (default 3)
+  "maxDist": number,  // only for rendezvous: maximum distance from target (default 3)
+  "points": number    // only for rendezvous: reward points for completing the task (default 0)
 }
 
 Rules:
-- "rendezvous": agents must all navigate near a specific tile and wait for each other there
+- "rendezvous": agents must all navigate near a specific tile and wait for each other there. ONLY use this type when explicit numeric x,y coordinates are present in the text. If no coordinates are given, do NOT output rendezvous.
 - "wait_odd_row": agents must move to a tile in an odd-numbered row (y is odd) and stop
 - "resume": agents are allowed to move freely again (clears any wait or rendezvous hold)
+- If the text says "wait for each other" or "meet" but contains NO explicit coordinates, return {"type": "wait_odd_row"} as the closest safe fallback.
+- Extract the reward points if mentioned (e.g. "500pts", "you will receive 300 points"). Default to 0 if not mentioned.
 - Return valid JSON only, no markdown, no explanation
 
 Examples:
-Input: "Move both agents to the neighborhood of position (5,3) within a maximum distance of 3"
-Output: {"type": "rendezvous", "x": 5, "y": 3, "maxDist": 3}
+Input: "Move both agents to the neighborhood of position (5,3) within a maximum distance of 3 and have them wait for each other. You will receive 500pts."
+Output: {"type": "rendezvous", "x": 5, "y": 3, "maxDist": 3, "points": 500}
+
+Input: "Move both agents to the neighborhood of position 4,20 within a maximum distance of 3 and have them wait for each other"
+Output: {"type": "rendezvous", "x": 4, "y": 20, "maxDist": 3, "points": 0}
 
 Input: "All agents must move to an odd-numbered row and wait"
 Output: {"type": "wait_odd_row"}

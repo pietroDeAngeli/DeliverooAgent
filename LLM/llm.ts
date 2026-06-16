@@ -10,7 +10,7 @@ const apiKey = process.env.LITELLM_API_KEY;
 const MODEL = process.env.LOCAL_MODEL;
 
 export type MultiAgentCommand =
-    | { type: 'rendezvous'; x: number; y: number; maxDist: number }
+    | { type: 'rendezvous'; x: number; y: number; maxDist: number; points: number }
     | { type: 'wait_odd_row' }
     | { type: 'resume' };
 
@@ -161,7 +161,7 @@ export class LLMClient {
         try {
             const parsed = JSON.parse(this.stripMarkdown(response));
             if (parsed.type === 'rendezvous') {
-                return { type: 'rendezvous', x: Number(parsed.x), y: Number(parsed.y), maxDist: Number(parsed.maxDist ?? 3) };
+                return { type: 'rendezvous', x: Number(parsed.x), y: Number(parsed.y), maxDist: Number(parsed.maxDist ?? 3), points: Number(parsed.points ?? 0) };
             } else if (parsed.type === 'wait_odd_row') {
                 return { type: 'wait_odd_row' };
             } else if (parsed.type === 'resume') {
@@ -306,9 +306,9 @@ export class LLMClient {
                     updates.stackConstraints.push(constraint);
                 }
             } else if (action === "multi_agent_command") {
-                const cmd = await this.extractMultiAgentCommand(subMsg);
-                if (cmd) {
-                    updates.multiAgentCommand = cmd;
+                if (!updates.multiAgentCommand) {
+                    const cmd = await this.extractMultiAgentCommand(subMsg);
+                    if (cmd) updates.multiAgentCommand = cmd;
                 }
             }
         }
