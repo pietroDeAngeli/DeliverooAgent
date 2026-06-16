@@ -1,0 +1,187 @@
+{
+  "category": "extractMultiAgentCommand",
+  "timestamp": "2026-06-16T13-14-38",
+  "total": 22,
+  "passed": 22,
+  "failed": 0,
+  "accuracy_pct": 100,
+  "avg_latency_ms": 509,
+  "tests": [
+    {
+      "id": 1,
+      "description": "Red light with explicit odd parity",
+      "input": "Red light — all agents stop on an odd row",
+      "passed": true,
+      "latency_ms": 1287,
+      "actual": "{\"type\":\"wait_row\",\"parity\":\"odd\"}"
+    },
+    {
+      "id": 2,
+      "description": "Red light with explicit even parity",
+      "input": "Red light — stop on an even row",
+      "passed": true,
+      "latency_ms": 468,
+      "actual": "{\"type\":\"wait_row\",\"parity\":\"even\"}"
+    },
+    {
+      "id": 3,
+      "description": "Bare red light — default parity odd",
+      "input": "Red light!",
+      "passed": true,
+      "latency_ms": 488,
+      "actual": "{\"type\":\"wait_row\",\"parity\":\"odd\"}"
+    },
+    {
+      "id": 4,
+      "description": "Explicit stop imperative — default parity odd",
+      "input": "Stop! All agents freeze immediately.",
+      "passed": true,
+      "latency_ms": 470,
+      "actual": "{\"type\":\"wait_row\",\"parity\":\"odd\"}"
+    },
+    {
+      "id": 5,
+      "description": "Halt and hold — default parity odd",
+      "input": "All agents halt and hold position.",
+      "passed": true,
+      "latency_ms": 469,
+      "actual": "{\"type\":\"wait_row\",\"parity\":\"odd\"}"
+    },
+    {
+      "id": 6,
+      "description": "Don't move instruction — default parity odd",
+      "input": "Don't move.",
+      "passed": true,
+      "latency_ms": 466,
+      "actual": "{\"type\":\"wait_row\",\"parity\":\"odd\"}"
+    },
+    {
+      "id": 7,
+      "description": "Stand still on even row",
+      "input": "Agents must stand still on an even row.",
+      "passed": true,
+      "latency_ms": 466,
+      "actual": "{\"type\":\"wait_row\",\"parity\":\"even\"}"
+    },
+    {
+      "id": 8,
+      "description": "Move to odd-numbered row and wait",
+      "input": "All agents must move to an odd-numbered row and wait",
+      "passed": true,
+      "latency_ms": 475,
+      "actual": "{\"type\":\"wait_row\",\"parity\":\"odd\"}"
+    },
+    {
+      "id": 9,
+      "description": "Move to even-numbered row and wait",
+      "input": "All agents must move to an even-numbered row and wait",
+      "passed": true,
+      "latency_ms": 466,
+      "actual": "{\"type\":\"wait_row\",\"parity\":\"even\"}"
+    },
+    {
+      "id": 10,
+      "description": "Green light — bare signal",
+      "input": "Green light.",
+      "passed": true,
+      "latency_ms": 312,
+      "actual": "{\"type\":\"resume\"}"
+    },
+    {
+      "id": 11,
+      "description": "Green light go",
+      "input": "Green light, go!",
+      "passed": true,
+      "latency_ms": 316,
+      "actual": "{\"type\":\"resume\"}"
+    },
+    {
+      "id": 12,
+      "description": "Permissive move again phrase",
+      "input": "You can move again",
+      "passed": true,
+      "latency_ms": 288,
+      "actual": "{\"type\":\"resume\"}"
+    },
+    {
+      "id": 13,
+      "description": "Resume moving imperative",
+      "input": "Resume moving.",
+      "passed": true,
+      "latency_ms": 316,
+      "actual": "{\"type\":\"resume\"}"
+    },
+    {
+      "id": 14,
+      "description": "Start moving imperative",
+      "input": "All agents start moving.",
+      "passed": true,
+      "latency_ms": 283,
+      "actual": "{\"type\":\"resume\"}"
+    },
+    {
+      "id": 15,
+      "description": "Free to move permissive",
+      "input": "Go! You are free to move.",
+      "passed": true,
+      "latency_ms": 285,
+      "actual": "{\"type\":\"resume\"}"
+    },
+    {
+      "id": 16,
+      "description": "Continue deliveries",
+      "input": "Continue your deliveries.",
+      "passed": true,
+      "latency_ms": 282,
+      "actual": "{\"type\":\"resume\"}"
+    },
+    {
+      "id": 17,
+      "description": "Rendezvous with coordinates and points",
+      "input": "Move both agents to the neighborhood of position (5,3) within a maximum distance of 3 and have them wait for each other. You will receive 500pts.",
+      "passed": true,
+      "latency_ms": 1021,
+      "actual": "{\"type\":\"rendezvous\",\"x\":5,\"y\":3,\"maxDist\":3,\"points\":500}"
+    },
+    {
+      "id": 18,
+      "description": "Rendezvous with coordinates no points",
+      "input": "Move both agents to the neighborhood of position 4,20 within a maximum distance of 3 and have them wait for each other",
+      "passed": true,
+      "latency_ms": 1016,
+      "actual": "{\"type\":\"rendezvous\",\"x\":4,\"y\":20,\"maxDist\":3,\"points\":0}"
+    },
+    {
+      "id": 19,
+      "description": "Parcel handoff with points",
+      "input": "If a parcel is initially picked up by one agent and later delivered by the other agent, you will receive a 200 points bonus.",
+      "passed": true,
+      "latency_ms": 505,
+      "actual": "{\"type\":\"parcel_handoff\",\"points\":200}"
+    },
+    {
+      "id": 20,
+      "description": "Parcel handoff large bonus",
+      "input": "You get 500 extra points if one agent picks up a parcel and the partner delivers it.",
+      "passed": true,
+      "latency_ms": 506,
+      "actual": "{\"type\":\"parcel_handoff\",\"points\":500}"
+    },
+    {
+      "id": 21,
+      "description": "Parcel handoff pass phrasing",
+      "input": "Pass the package to the other agent for a 50 pt reward.",
+      "passed": true,
+      "latency_ms": 506,
+      "actual": "{\"type\":\"parcel_handoff\",\"points\":50}"
+    },
+    {
+      "id": 22,
+      "description": "Parcel handoff relay no points",
+      "input": "Relay the delivery! Have agent 1 transfer the box to agent 2.",
+      "passed": true,
+      "latency_ms": 506,
+      "actual": "{\"type\":\"parcel_handoff\",\"points\":0}"
+    }
+  ]
+}

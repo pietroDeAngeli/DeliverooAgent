@@ -1,75 +1,75 @@
 {
   "category": "extractStackConstraint",
-  "timestamp": "2026-06-15T14-06-17",
+  "timestamp": "2026-06-16T13-14-38",
   "total": 8,
   "passed": 8,
   "failed": 0,
   "accuracy_pct": 100,
-  "avg_latency_ms": 726,
+  "avg_latency_ms": 1549,
   "tests": [
     {
       "id": 1,
       "description": "Challenge: exactly 3 parcels → double reward",
       "input": "Deliver stacks of exactly 3 parcels at a time to double the reward",
       "passed": true,
-      "latency_ms": 1068,
-      "actual": "{\"count\":3,\"operator\":\"equals\",\"multiplier\":2}"
+      "latency_ms": 1984,
+      "actual": "{\"count\":3,\"operator\":\"equals\",\"multiplier\":2,\"mode\":\"count\"}"
     },
     {
       "id": 2,
       "description": "Challenge: exactly 5 parcels → 0.3x reward",
       "input": "Deliver stacks of exactly 5 parcels at a time to get 0.3 of the standard reward",
       "passed": true,
-      "latency_ms": 681,
-      "actual": "{\"count\":5,\"operator\":\"equals\",\"multiplier\":0.3}"
+      "latency_ms": 1260,
+      "actual": "{\"count\":5,\"operator\":\"equals\",\"multiplier\":0.3,\"mode\":\"count\"}"
     },
     {
       "id": 3,
       "description": "At least 4 parcels → 1.5x reward",
       "input": "Delivering 4 or more parcels at once gives you 1.5x the reward",
       "passed": true,
-      "latency_ms": 710,
-      "actual": "{\"count\":4,\"operator\":\"at_least\",\"multiplier\":1.5}"
+      "latency_ms": 1792,
+      "actual": "{\"count\":4,\"operator\":\"at_least\",\"multiplier\":1.5,\"mode\":\"count\"}"
     },
     {
       "id": 4,
       "description": "At most 2 parcels → half reward",
       "input": "Delivering at most 2 parcels cuts the reward in half",
       "passed": true,
-      "latency_ms": 703,
-      "actual": "{\"count\":2,\"operator\":\"at_most\",\"multiplier\":0.5}"
+      "latency_ms": 3826,
+      "actual": "{\"count\":2,\"operator\":\"at_most\",\"multiplier\":0.5,\"mode\":\"count\"}"
     },
     {
       "id": 5,
       "description": "Exactly 1 parcel → no reward (zero multiplier)",
       "input": "Delivering exactly 1 parcel gives you no reward",
       "passed": true,
-      "latency_ms": 621,
-      "actual": "{\"count\":1,\"operator\":\"equals\",\"multiplier\":0}"
+      "latency_ms": 824,
+      "actual": "{\"count\":1,\"operator\":\"equals\",\"multiplier\":0,\"mode\":\"count\"}"
     },
     {
       "id": 6,
       "description": "Italian: exactly 3 parcels → double reward",
       "input": "Consegna esattamente 3 pacchi per ottenere il doppio del reward",
       "passed": true,
-      "latency_ms": 630,
-      "actual": "{\"count\":3,\"operator\":\"equals\",\"multiplier\":2}"
+      "latency_ms": 953,
+      "actual": "{\"count\":3,\"operator\":\"equals\",\"multiplier\":2,\"mode\":\"count\"}"
     },
     {
       "id": 7,
       "description": "At least 2 parcels → 1.2x reward",
       "input": "Delivering 2 or more parcels gives 1.2x the normal reward",
       "passed": true,
-      "latency_ms": 713,
-      "actual": "{\"count\":2,\"operator\":\"at_least\",\"multiplier\":1.2}"
+      "latency_ms": 891,
+      "actual": "{\"count\":2,\"operator\":\"at_least\",\"multiplier\":1.2,\"mode\":\"count\"}"
     },
     {
       "id": 8,
       "description": "Exactly 5 parcels → zero multiplier (stack penalty)",
       "input": "Exactly 5 parcels at once gives 0.3 of the standard reward",
       "passed": true,
-      "latency_ms": 682,
-      "actual": "{\"count\":5,\"operator\":\"equals\",\"multiplier\":0.3}"
+      "latency_ms": 860,
+      "actual": "{\"count\":5,\"operator\":\"equals\",\"multiplier\":0.3,\"mode\":\"count\"}"
     }
   ]
 }
