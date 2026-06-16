@@ -6,13 +6,14 @@ Tool Usage Rules:
 4. **generate_desire**: set a movement goal — navigate TO or AVOID a specific tile identified by coordinates like (x, y). Use this whenever the instruction is about where the agent should or should not MOVE.
 5. **common_knowledge**: answer a general factual question unrelated to the game (history, science, geography, trivia, etc.).
 6. **generate_delivery_constraint**: set a delivery preference about WHERE to DROP packages, expressed as a DIRECTION (leftmost / rightmost / topmost / bottommost). Only use this for drop-off zone instructions, never for movement goals.
-7. **generate_stack_constraint**: set a delivery reward rule based on HOW MANY parcels are carried at delivery time (e.g. "exactly 3 parcels → double reward", "exactly 5 → 0.3x"). Only use when the instruction specifies a parcel COUNT that affects the delivery multiplier.
+7. **generate_stack_constraint**: set a delivery reward rule based on either HOW MANY parcels are carried (e.g. "exactly 3 parcels → double reward") OR the total SCORE/VALUE of carried parcels at delivery time (e.g. "score higher than 10 → no reward"). Use when the instruction specifies a parcel count OR a carried reward threshold that affects the delivery multiplier.
 8. **multi_agent_command**: coordinate MULTIPLE agents together — meeting at a location, waiting in a specific row type, or resuming after a hold. Use when the message explicitly involves "both agents", "all agents", "each other", meeting/rendezvous, or signals like "red light / green light", "go", "stop", "resume".
 
 Key distinctions:
 - Any request with a specific coordinate (x, y) and movement/avoidance → **generate_desire**
 - Any request about delivery direction (leftmost/rightmost/topmost/bottommost) → **generate_delivery_constraint**
 - Any request about delivering a specific NUMBER/COUNT of parcels for a reward multiplier → **generate_stack_constraint**
+- Any request where the carried parcel SCORE/VALUE threshold affects the reward multiplier → **generate_stack_constraint**
 - Any general factual question (capitals, history, science) → **common_knowledge**
 - Any numerical expression to compute → **calculate**
 - Any coordination between MULTIPLE agents (rendezvous, synchronized wait, resume signal) → **multi_agent_command**
@@ -114,6 +115,8 @@ User: "Where am I?"                → get_my_position
 User: "Deliver stacks of exactly 3 parcels to double the reward" → generate_stack_constraint
 User: "Exactly 5 parcels at once gives 0.3 of the standard reward" → generate_stack_constraint
 User: "Delivering 4 or more parcels gives 1.5x" → generate_stack_constraint
+User: "If you deliver parcels with a score higher than 10, you get no reward" → generate_stack_constraint
+User: "Carrying parcels worth more than 20 gives 2x on delivery" → generate_stack_constraint
 User: "Move both agents to the neighborhood of (5,3) within distance 3 and wait for each other" → multi_agent_command
 User: "All agents must move to an odd-numbered row and wait" → multi_agent_command
 User: "You can move again" → multi_agent_command
@@ -311,33 +314,47 @@ Output: {"type": "wait_odd_row"}
 `.trim();
 
 export const STACK_CONSTRAINT_PROMPT = `
-You are an assistant that extracts parcel stack size delivery constraints for a DeliverooJS agent.
+You are an assistant that extracts delivery reward constraints for a DeliverooJS agent.
 
-Given an instruction about delivering a specific number of parcels at once and the reward multiplier that applies, extract the structured constraint.
+The constraint may be based on either:
+- The NUMBER of parcels carried at delivery time (count-based)
+- The total SCORE (cumulative reward value) of carried parcels at delivery time (score-based)
 
 Return a JSON object:
 {
   "count": number,
   "operator": "equals" | "at_least" | "at_most",
-  "multiplier": number
+  "multiplier": number,
+  "mode": "count" | "score"
 }
 
 Rules:
-- count: the number of parcels in the stack
-- operator: "equals" for "exactly N", "at_least" for "N or more / at least N", "at_most" for "N or fewer / at most N"
-- multiplier: the reward factor (2 for "double", 0.5 for "half", 0.3 for "0.3 of standard", 0 for "no reward")
+- mode: "count" when the condition is on the NUMBER of parcels; "score" when the condition is on the TOTAL VALUE/SCORE of carried parcels (e.g. "score higher than 10", "worth more than 20", "total reward exceeds 15", "score lower than 10")
+- count: the threshold number (parcel count or score value depending on mode)
+- operator: "at_least" when the value must be HIGH (higher than, more than, exceeds, at least, N or more); "at_most" when the value must be LOW (lower than, less than, below, at most, N or fewer); "equals" for exactly N
+- CRITICAL: "lower than N" and "less than N" → ALWAYS "at_most". "higher than N" and "more than N" → ALWAYS "at_least". Never swap these.
+- multiplier: the reward factor (2 for "double", 0.5 for "half", 0.3 for "0.3 of standard", 0 for "no reward" / "zero points")
 - Return valid JSON only, no markdown, no explanation
 
 Examples:
 Input: "Deliver stacks of exactly 3 parcels at a time to double the reward"
-Output: {"count": 3, "operator": "equals", "multiplier": 2}
-
-Input: "Deliver stacks of exactly 5 parcels at a time to get 0.3 of the standard reward"
-Output: {"count": 5, "operator": "equals", "multiplier": 0.3}
+Output: {"count": 3, "operator": "equals", "multiplier": 2, "mode": "count"}
 
 Input: "Delivering 4 or more parcels at once gives you 1.5x the reward"
-Output: {"count": 4, "operator": "at_least", "multiplier": 1.5}
+Output: {"count": 4, "operator": "at_least", "multiplier": 1.5, "mode": "count"}
 
 Input: "Delivering at most 2 parcels cuts the reward in half"
-Output: {"count": 2, "operator": "at_most", "multiplier": 0.5}
+Output: {"count": 2, "operator": "at_most", "multiplier": 0.5, "mode": "count"}
+
+Input: "If you deliver parcels with a score higher than 10, you get no reward"
+Output: {"count": 10, "operator": "at_least", "multiplier": 0, "mode": "score"}
+
+Input: "If you deliver parcels with a score lower than 10, you get zero points"
+Output: {"count": 10, "operator": "at_most", "multiplier": 0, "mode": "score"}
+
+Input: "Carrying parcels worth more than 20 points gives 2x reward on delivery"
+Output: {"count": 20, "operator": "at_least", "multiplier": 2, "mode": "score"}
+
+Input: "Parcels with total value less than 5 give no reward"
+Output: {"count": 5, "operator": "at_most", "multiplier": 0, "mode": "score"}
 `.trim();

@@ -173,10 +173,13 @@ function applyLLMUpdates(updates: LLMUpdate): void {
     }
     for (const constraint of updates.stackConstraints) {
         const op = constraint.operator as StackConstraint['operator'];
-        const existing = llmStackConstraints.findIndex(c => c.count === constraint.count && c.operator === op);
-        if (existing >= 0) llmStackConstraints[existing] = { count: constraint.count, operator: op, multiplier: constraint.multiplier };
-        else llmStackConstraints.push({ count: constraint.count, operator: op, multiplier: constraint.multiplier });
-        console.log(`[LLM] stack constraint: ${op} ${constraint.count} parcels → x${constraint.multiplier}`);
+        const mode = (constraint.mode ?? 'count') as StackConstraint['mode'];
+        const existing = llmStackConstraints.findIndex(c => c.count === constraint.count && c.operator === op && (c.mode ?? 'count') === mode);
+        const entry: StackConstraint = { count: constraint.count, operator: op, multiplier: constraint.multiplier, mode };
+        if (existing >= 0) llmStackConstraints[existing] = entry;
+        else llmStackConstraints.push(entry);
+        const label = mode === 'score' ? 'score' : 'parcels';
+        console.log(`[LLM] stack constraint: ${op} ${constraint.count} ${label} → x${constraint.multiplier}`);
     }
     if (updates.multiAgentCommand) {
         const cmd = updates.multiAgentCommand;
@@ -460,7 +463,8 @@ async function bdiStep(): Promise<void> {
         const bestMultiplier = llmDeliveryBonusTiles.size > 0
             ? Math.max(...llmDeliveryBonusTiles.values()) : 1;
         const betterBonusTileExists = bestMultiplier > currentMultiplier;
-        const stackMult = effectiveDeliveryMultiplier(carrying.length, llmStackConstraints, worldMap.parcels.size);
+        const carriedScore = carrying.reduce((s, p) => s + p.reward, 0);
+        const stackMult = effectiveDeliveryMultiplier(carrying.length, llmStackConstraints, worldMap.parcels.size, carriedScore);
         if (carrying.length > 0 && utils.tile_is('delivery', myAgent.pos, worldMap.tiles) &&
             !llmBlockedDeliveryTiles.has(currentTileKey) &&
             !betterBonusTileExists &&

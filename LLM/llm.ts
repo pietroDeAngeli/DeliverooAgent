@@ -20,7 +20,7 @@ export type LLMUpdate = {
     deliveryConstraints: Array<{ direction: string; points: number }>;
     deliveryBonusTiles: Array<{ x: number; y: number; multiplier: number }>; // "x,y" → multiplier
     blockedDeliveryTiles: string[]; // "x,y" format — delivery target only, not traversal
-    stackConstraints: Array<{ count: number; operator: string; multiplier: number }>;
+    stackConstraints: Array<{ count: number; operator: string; multiplier: number; mode?: string }>;
     multiAgentCommand?: MultiAgentCommand;
 };
 
@@ -174,7 +174,7 @@ export class LLMClient {
         }
     }
 
-    private async extractStackConstraint(text: string): Promise<{ count: number; operator: string; multiplier: number } | null> {
+    private async extractStackConstraint(text: string): Promise<{ count: number; operator: string; multiplier: number; mode?: string } | null> {
         const messages = [
             { role: "system", content: prompts.STACK_CONSTRAINT_PROMPT },
             { role: "user", content: text },

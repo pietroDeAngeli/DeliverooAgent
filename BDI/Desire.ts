@@ -5,28 +5,35 @@ export type StackConstraint = {
     count: number;
     operator: 'equals' | 'at_least' | 'at_most';
     multiplier: number;
+    mode?: 'count' | 'score'; // 'count' = parcel count, 'score' = cumulative carried reward value
 };
 
 export function effectiveDeliveryMultiplier(
     carriedQty: number,
     stackConstraints: StackConstraint[],
     availableParcels: number,
+    carriedScore: number = 0,
 ): number {
     if (stackConstraints.length === 0) return 1;
 
     for (const c of stackConstraints) {
+        const value = (c.mode ?? 'count') === 'score' ? carriedScore : carriedQty;
         const matches =
-            (c.operator === 'equals'   && carriedQty === c.count) ||
-            (c.operator === 'at_least' && carriedQty >= c.count)  ||
-            (c.operator === 'at_most'  && carriedQty <= c.count);
+            (c.operator === 'equals'   && value === c.count) ||
+            (c.operator === 'at_least' && value >= c.count)  ||
+            (c.operator === 'at_most'  && value <= c.count);
         if (matches) return c.multiplier;
     }
 
-    // No constraint matched — check if a favorable target is still reachable
+    // No constraint matched — check if a favorable count-based target is still reachable
     const hasReachableFavorable = stackConstraints.some(
-        c => c.multiplier > 1 && c.operator === 'equals' && c.count > carriedQty,
+        c => (c.mode ?? 'count') === 'count' && c.multiplier > 1 && c.operator === 'equals' && c.count > carriedQty,
     );
     if (hasReachableFavorable && availableParcels > 0) return 0.1;
+
+    // For score-based at_most-zero constraints: the constraint matched above (returned 0) when
+    // score <= threshold. If we reach here, score > threshold and delivery is fine → return 1.
+    // Nothing extra needed; fall through.
 
     return 1;
 }
@@ -153,7 +160,7 @@ export function generateDesires(
             }
         }
 
-        const stackMult = effectiveDeliveryMultiplier(carriedQty, stackConstraints, worldMap.parcels.size);
+        const stackMult = effectiveDeliveryMultiplier(carriedQty, stackConstraints, worldMap.parcels.size, carriedReward);
         for (const d of candidates) {
             const dist = agentFinder.getDistance(d);
             if (dist === Infinity) continue;
