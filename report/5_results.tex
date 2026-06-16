@@ -31,24 +31,31 @@ The performance variations depend strictly on the structural characteristics of 
 
 \subsection{LLM Components Evaluation Results}
 \label{sec:llm_results}
-Table~\ref{tab:llm_pipeline_eval} reports a component-level evaluation of the LLM pipeline, measuring the performance and average latency of each processing stage. Given the focus on architectural validation, the metrics were collected on a small, controlled test set. While the high success rate across components demonstrates the effectiveness of the targeted prompts, these figures serve primarily to contextualize execution latency and structural robustness rather than to claim absolute generalization over larger, unconstrained datasets.
+Table~\ref{tab:llm_pipeline_eval} reports a component-level evaluation of the LLM pipeline, measuring the accuracy and average latency of each processing stage across all 315 test cases. Given the focus on architectural validation, the metrics were collected on a controlled test set designed to cover the full range of prompt complexity for each category. While the high overall accuracy (98.4\%) demonstrates the effectiveness of the targeted few-shot prompts, these figures serve primarily to contextualize execution latency and structural robustness rather than to claim absolute generalization over larger, unconstrained datasets.
 
 \begin{table}[H]
   \centering
-  \caption{Component-level evaluation of the LLM pipeline.}
+  \caption{Component-level evaluation of the LLM pipeline (315 total test cases).}
   \label{tab:llm_pipeline_eval}
-  \begin{tabular}{lrrr}
+  \begin{tabular}{lrrrr}
     \toprule
-    \textbf{Category} & \textbf{Total} & \textbf{Passed} & \textbf{Avg.\ latency (ms)} \\
+    \textbf{Category} & \textbf{Total} & \textbf{Passed} & \textbf{Accuracy} & \textbf{Avg.\ latency (ms)} \\
     \midrule
-    \texttt{tools}                    & 50 & 50 &   2 \\
-    \texttt{splitMessage}             & 25 & 25 & 764 \\
-    \texttt{extractCityName}          & 25 & 25 & 282 \\
-    \texttt{extractMathExpression}    & 25 & 24 & 372 \\
-    \texttt{extractDeliveryConstraint}& 25 & 25 & 667 \\
-    \texttt{decideNextAction}         & 25 & 25 & 323 \\
+    \texttt{extractAction}              & 25 & 25 & 100.0\% &    0 \\
+    \texttt{tools}                      & 53 & 52 &  98.1\% &    2 \\
+    \texttt{splitMessage}               & 35 & 34 &  97.1\% &  867 \\
+    \texttt{extractCityName}            & 25 & 25 & 100.0\% &  170 \\
+    \texttt{extractMathExpression}      & 25 & 24 &  96.0\% &  278 \\
+    \texttt{planTasks}                  & 30 & 28 &  93.3\% & 1206 \\
+    \texttt{extractDeliveryConstraint}  & 25 & 25 & 100.0\% &  513 \\
+    \texttt{generateDesire}             & 23 & 23 & 100.0\% & 1401 \\
+    \texttt{extractStackConstraint}     &  8 &  8 & 100.0\% & 1549 \\
+    \texttt{extractMultiAgentCommand}   & 22 & 22 & 100.0\% &  509 \\
+    \texttt{decideNextAction}           & 44 & 44 & 100.0\% &  203 \\
+    \midrule
+    \textbf{Total}                      & \textbf{315} & \textbf{310} & \textbf{98.4\%} & --- \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-\TODO{Add other tests for tasks 2 and 3}
+The two deterministic categories (\texttt{extractAction} and \texttt{tools}) execute in near-zero latency and achieve near-perfect accuracy, validating the correctness of the whitelist-based action classifier and the safe expression evaluator. Among the LLM-backed stages, \texttt{planTasks} (93.3\%) and \texttt{extractMathExpression} (96.0\%) show the highest failure rates, concentrated on edge cases involving nested or multi-step expressions. All remaining categories --- including the newly added \texttt{extractStackConstraint}, \texttt{generateDesire}, and \texttt{extractMultiAgentCommand} --- achieve 100\% accuracy, confirming that the targeted few-shot prompts generalize well to the full range of Level 2 and Level 3 mission types. Latency is highest for categories that require complex structured JSON extraction (\texttt{extractStackConstraint}: 1549\,ms, \texttt{generateDesire}: 1401\,ms), consistent with the greater reasoning load imposed by those prompts.

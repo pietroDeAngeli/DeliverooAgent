@@ -86,4 +86,26 @@ The agent implements two deterministic recovery mechanisms to prevent deadlocks 
 To ensure smooth navigation, the agent proactively predicts potential collisions by estimating the immediate future position of nearby opponents based on their last observed moving direction. If the agent's next planned step coincides with a predicted opponent position, the current path is cleared and immediately recomputed to avoid a confrontation. Furthermore, opponents that remain stationary across multiple consecutive sensing updates are dynamically registered as static obstacles within the pathfinding grid, allowing the agent to route around them efficiently.
 
 \subsection{Communication Mechanisms}
-\TODO{missing}
+
+The multi-agent architecture follows a \textbf{master/slave} deployment model. One agent is designated as the \textit{master} (\texttt{IS\_MASTER=true}) and the other as the \textit{slave}. The master agent is the sole point of entry for all natural-language instructions: it runs the full LLM pipeline and, immediately after each \texttt{processMessage} call, forwards the resulting \texttt{LLMUpdate} payload to the slave via a \texttt{LLM\_UPDATE} peer message. Both agents then apply the same structured update to their respective BDI loops, ensuring synchronized belief state without requiring the slave to carry its own LLM client.
+
+Communication relies on the Deliveroo.js peer-to-peer messaging layer (\texttt{socket.emitSay} / \texttt{socket.onMsg}). Partner discovery is automatic: the first non-admin incoming message is used to register the partner's agent ID. Five dedicated message kinds support the coordination protocols:
+
+\begin{itemize}
+    \item \textbf{\texttt{LLM\_UPDATE}}: carries the full \texttt{LLMUpdate} payload from master to slave after each processed instruction.
+    \item \textbf{\texttt{RENDEZVOUS\_ARRIVED}}: broadcast by an agent that has entered the rendezvous radius, signalling that it is in position. Upon receipt, an agent already within range immediately completes the mission.
+    \item \textbf{\texttt{HANDOFF\_SLAVE\_POS}}: sent by the slave (deliverer) immediately upon receiving a \texttt{parcel\_handoff} command, reporting its current coordinates so the master (picker) can compute the optimal meeting tile.
+    \item \textbf{\texttt{HANDOFF\_APPROACH}}: sent by the picker once it has acquired a parcel, notifying the deliverer of the picker's current position so the deliverer can start converging.
+    \item \textbf{\texttt{HANDOFF\_DROPPED}}: sent by the picker after it has dropped the parcel at the meeting tile, including the parcel list and drop coordinates, so the deliverer can navigate directly to the tile for pickup.
+\end{itemize}
+
+\paragraph{Parcel Handoff Protocol.}
+When a \texttt{parcel\_handoff} command is received, the master assumes the \textit{picker} role and the slave assumes the \textit{deliverer} role. The protocol proceeds in three phases:
+
+\begin{enumerate}
+    \item \textbf{Meeting-point negotiation.} The slave immediately reports its position via \texttt{HANDOFF\_SLAVE\_POS}. The master waits up to a configurable timeout; if the report arrives in time, it runs a BFS-based meeting-point algorithm (\texttt{computeMeetingPoint}) that finds the walkable tile minimizing the sum of BFS distances from both agents, preferring tiles that are not trivially reachable in zero steps by either agent. If the slave position is not received within the timeout, the master aborts the handoff and reverts to normal delivery.
+
+    \item \textbf{Acquisition and approach.} The picker acquires a target parcel via its normal BDI loop (highest-utility \texttt{go\_pickup} desire). Once a parcel is in hand, it transitions to the \texttt{handoff\_approach} phase, navigates toward the computed meeting tile, and sends \texttt{HANDOFF\_APPROACH} to the deliverer. The deliverer navigates to the same meeting tile. While in any handoff phase, both agents suppress normal delivery intentions to avoid premature drop-offs.
+
+    \item \textbf{Drop and pickup.} When the picker reaches the meeting tile (Manhattan distance $\leq 1$), it drops the parcel via \texttt{emitPutdown} and broadcasts \texttt{HANDOFF\_DROPPED} with the drop coordinates and parcel list. The deliverer's belief state is pre-populated with the dropped parcel to ensure a non-empty pickup queue on arrival. The deliverer then picks up the parcel and delivers it for the bonus reward. A per-agent timeout at the meeting tile ensures the protocol degrades gracefully if either agent becomes stuck: the picker drops on timeout, and the deliverer abandons the wait after a separate timer expires.
+\end{enumerate}
