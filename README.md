@@ -33,6 +33,22 @@ This will automatically:
 
 Then modify the `.env.example` file with the required fields and rename it to `.env`.
 
+The available environment variables are:
+
+| Variable | Default | Description |
+|---|---|---|
+| `HOST` | — | WebSocket URL of the Deliveroo server |
+| `AGENT_TOKEN_BDI` | — | JWT token for the pure-BDI agent |
+| `AGENT_TOKEN_LLM` | — | JWT token for the LLM-enabled agent |
+| `USE_PDDL` | `false` | Use the PDDL/A\* planner instead of BFS |
+| `USE_LLM` | `false` | Enable the LLM reasoning layer on the BDI loop |
+| `DEBUG` | `false` | Verbose BDI step logs (desires, intentions, stuck detection) |
+| `LITELLM_BASE_URL` | — | Base URL of the LiteLLM-compatible API *(LLM only)* |
+| `LITELLM_API_KEY` | — | API key for the LLM *(LLM only)* |
+| `LOCAL_MODEL` | — | Model name to use *(LLM only)* |
+
+> `IS_MASTER` and `PARTNER_ID` are set automatically by `start_multi_agent.sh` and do not need to be in `.env`.
+
 **Manual setup:**
 If you prefer manual control, run:
 ```bash
@@ -66,7 +82,13 @@ npm run start:llm
 node --experimental-strip-types main.ts --use-llm --token=YOUR_TOKEN
 ```
 
-Multi Agent mode (two terminals, BDI + LLM):
+Multi Agent mode — single script (recommended):
+```bash
+bash start_multi_agent.sh
+```
+This starts both agents in one terminal: the LLM-enabled master (`AGENT_TOKEN_LLM`) and the pure-BDI slave (`AGENT_TOKEN_BDI`). It decodes each token to extract the agent IDs, passes them as `PARTNER_ID` so the agents can discover each other immediately, and prefixes every log line with `[master]` / `[slave]` for clarity. Press `Ctrl+C` to stop both.
+
+Multi Agent mode — two separate terminals:
 ```bash
 # Terminal 1 — BDI agent (reads AGENT_TOKEN_BDI from .env)
 npm run start:bdi
