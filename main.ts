@@ -80,6 +80,9 @@ let handoffPhase: 'pickup' | 'approach' | 'idle' = 'idle';
 let handoffSlavePos: Position | null = null;   // slave's self-reported position for meeting point
 let handoffWaitStart: number | null = null;    // when picker started waiting for slave pos
 let handoffWaitAtMeetStart: number | null = null; // when slave arrived at meeting tile
+let handoffDroppedIds = new Set<string>();        // parcel IDs dropped for handoff — blocked from picker re-pickup
+let handoffDroppedAt: number | null = null;       // timestamp when last handoff drop occurred
+let handoffExpectedParcelIds: Set<string> | null = null; // deliverer: IDs expected from HANDOFF_DROPPED
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -123,36 +126,45 @@ if (USE_LLM_EFFECTIVE) {
 
 function computeMeetingPoint(posA: Position, posB: Position, blocked: Set<string>): Position | null {
     if (!worldMap) return null;
+
+    // BFS from A through the master's known worldMap.
     const finderA = utils.bfsFlood(posA, worldMap.tiles, worldMap.crates, blocked);
-    const finderB = utils.bfsFlood(posB, worldMap.tiles, worldMap.crates, blocked);
+
+    // B's position may lie outside the master's explored area.
+    // Anchor B's BFS to the nearest walkable tile the master knows about so
+    // the bidirectional search always produces a real result.
+    let startB: Position = posB;
+    const pBtype = worldMap.tiles.get(`${posB.x},${posB.y}`);
+    if (pBtype !== '0' && pBtype !== '1') {
+        let bestDist = Infinity;
+        for (const key of worldMap.tiles.keys()) {
+            const t = worldMap.tiles.get(key);
+            if (t !== '0' && t !== '1') continue;
+            const [x, y] = key.split(',').map(Number);
+            const d = Math.abs(x - posB.x) + Math.abs(y - posB.y);
+            if (d < bestDist) { bestDist = d; startB = { x, y }; }
+        }
+    }
+    const finderB = utils.bfsFlood(startB, worldMap.tiles, worldMap.crates, blocked);
+
+    // Bidirectional meeting point: minimise max(dA, dB) so both agents travel
+    // roughly the same distance. Tiebreak with dA+dB. Neither agent's own tile.
     let best: Position | null = null;
+    let bestMax = Infinity;
     let bestSum = Infinity;
-    
-    // Prefer intermediate tiles (dA>0 && dB>0) so neither agent is already there
+
     for (const key of worldMap.tiles.keys()) {
         const tileType = worldMap.tiles.get(key);
-        // FIX: Allow both regular (0) and spawning (1) tiles. Strictly forbid delivery (2).
-        if (tileType !== '0' && tileType !== '1') continue; 
-        
+        if (tileType !== '0' && tileType !== '1') continue;
         const [x, y] = key.split(',').map(Number);
         const dA = finderA.getDistance({ x, y });
         const dB = finderB.getDistance({ x, y });
         if (dA === Infinity || dB === Infinity || dA === 0 || dB === 0) continue;
-        if (dA + dB < bestSum) { bestSum = dA + dB; best = { x, y }; }
-    }
-    if (best) return best;
-    
-    // Fallback: agents are adjacent
-    for (const key of worldMap.tiles.keys()) {
-        const tileType = worldMap.tiles.get(key);
-        // FIX: Apply the same broad rule here
-        if (tileType !== '0' && tileType !== '1') continue; 
-        
-        const [x, y] = key.split(',').map(Number);
-        const dA = finderA.getDistance({ x, y });
-        const dB = finderB.getDistance({ x, y });
-        if (dA === Infinity || dB === Infinity) continue;
-        if (dA + dB < bestSum) { bestSum = dA + dB; best = { x, y }; }
+        const mx = Math.max(dA, dB);
+        const sm = dA + dB;
+        if (mx < bestMax || (mx === bestMax && sm < bestSum)) {
+            bestMax = mx; bestSum = sm; best = { x, y };
+        }
     }
     return best;
 }
@@ -343,6 +355,29 @@ async function stepTowards(dir: string, nextPos: Position): Promise<boolean> {
     return false;
 }
 
+// Step one tile toward `target` without requiring a pre-planned path.
+// Tries the dominant axis first, then the secondary axis — works even when
+// the target tile is outside the agent's known worldMap.
+async function stepToward(target: Position): Promise<boolean> {
+    const pos = myAgent!.pos;
+    const dx = target.x - pos.x;
+    const dy = target.y - pos.y;
+    const moves: Array<[string, Position]> =
+        Math.abs(dx) >= Math.abs(dy)
+            ? [
+                ...(dx !== 0 ? [[dx > 0 ? 'right' : 'left', { x: pos.x + Math.sign(dx), y: pos.y }] as [string, Position]] : []),
+                ...(dy !== 0 ? [[dy > 0 ? 'up'    : 'down',  { x: pos.x, y: pos.y + Math.sign(dy) }] as [string, Position]] : []),
+              ]
+            : [
+                ...(dy !== 0 ? [[dy > 0 ? 'up'    : 'down',  { x: pos.x, y: pos.y + Math.sign(dy) }] as [string, Position]] : []),
+                ...(dx !== 0 ? [[dx > 0 ? 'right' : 'left', { x: pos.x + Math.sign(dx), y: pos.y }] as [string, Position]] : []),
+              ];
+    for (const [dir, nextPos] of moves) {
+        if (await stepTowards(dir, nextPos)) return true;
+    }
+    return false;
+}
+
 // ── Socket events ─────────────────────────────────────────────────────────────
 
 socket.onConnect(() => console.log("Connected"));
@@ -488,6 +523,8 @@ socket.onMsg( async (id: string, name: string, msg: any, reply: ((response: any)
                     if (hdIdx >= 0) llmPendingMissions.splice(hdIdx, 1);
                     // Pre-populate worldMap so toPickup is non-empty when slave arrives
                     if (worldMap && Array.isArray(peerMsg.parcels)) {
+                        handoffExpectedParcelIds = new Set(peerMsg.parcels.map((pd: any) => pd.id));
+                        console.log(`[Handoff] Deliverer: expecting parcel IDs: ${[...handoffExpectedParcelIds].join(', ')}`);
                         for (const pd of peerMsg.parcels) {
                             worldMap.parcels.set(pd.id, new Parcel(
                                 { id: pd.id, x: dx, y: dy, reward: pd.reward, carriedBy: null }, Date.now(),
@@ -587,9 +624,9 @@ async function bdiStep(): Promise<void> {
 
                 let meet = computeMeetingPoint(myAgent.pos, partnerPos, blocked);
                 if (!meet) {
-                    // If not valid meeting point, ensure fallback isn't a delivery tile
-                    const partnerTileType = worldMap.tiles.get(`${partnerPos.x},${partnerPos.y}`);
-                    meet = partnerTileType === '1' ? partnerPos : myAgent.pos;
+                    // computeMeetingPoint only returns null when the master's worldMap has no
+                    // reachable walkable tiles at all — use partner's position as last resort.
+                    meet = partnerPos;
                 }
 
                 // Interrupt any in-progress mission and go straight to approach
@@ -658,16 +695,39 @@ async function bdiStep(): Promise<void> {
             }
         }
         
+        // Clear handoff-dropped IDs only when someone ELSE picked the parcel up (not the picker),
+        // or after a 45 s timeout. Do NOT clear on !p or carriedBy===self — those are timing races
+        // right after emitPutdown() where worldMap hasn't caught up yet.
+        if (handoffDroppedAt !== null && Date.now() - handoffDroppedAt > 45_000) {
+            handoffDroppedIds.clear();
+            handoffDroppedAt = null;
+        } else {
+            for (const id of handoffDroppedIds) {
+                const p = worldMap.parcels.get(id);
+                if (p?.carriedBy && p.carriedBy !== myAgent?.id) handoffDroppedIds.delete(id);
+            }
+        }
+
         let desires = generateDesires(
-            myAgent, 
-            worldMap, 
-            carrying, 
-            spawnVisitLog, 
-            activeBlocked, 
+            myAgent,
+            worldMap,
+            carrying,
+            spawnVisitLog,
+            activeBlocked,
             llmDeliveryBonusTiles,
             llmBlockedDeliveryTiles,
             llmStackConstraints
         );
+
+        // Prevent picker from re-acquiring parcels it just dropped for handoff
+        if (handoffDroppedIds.size > 0) {
+            desires = desires.filter(d => {
+                if (d.type !== 'go_pickup') return true;
+                const parcel = Array.from(worldMap!.parcels.values())
+                    .find(p => p.pos.x === d.x_target && p.pos.y === d.y_target);
+                return !parcel || !handoffDroppedIds.has(parcel.id);
+            });
+        }
 
         // ── Intention revision ────────────────────────────────────────────────
         const prevIntention  = currentIntention;
@@ -781,6 +841,17 @@ async function bdiStep(): Promise<void> {
                         ? `Picked up ${toPickup.length} parcel(s) at (${myAgent.pos.x},${myAgent.pos.y})`
                         : `No parcel at (${myAgent.pos.x},${myAgent.pos.y})`);
                 }
+                // Verify handoff parcel IDs if this is a deliverer picking up after a HANDOFF_DROPPED
+                if (handoffExpectedParcelIds && handoffExpectedParcelIds.size > 0) {
+                    const pickedIds = new Set(Array.isArray(res) ? res.map((p: any) => p.id) : []);
+                    const missing = [...handoffExpectedParcelIds].filter(id => !pickedIds.has(id));
+                    if (missing.length === 0) {
+                        console.log(`[Handoff] Deliverer: VERIFIED — got expected parcel(s): ${[...pickedIds].join(', ')}`);
+                    } else {
+                        console.log(`[Handoff] Deliverer: MISMATCH — expected [${[...handoffExpectedParcelIds].join(', ')}], got [${[...pickedIds].join(', ')}] — missing: ${missing.join(', ')}`);
+                    }
+                    handoffExpectedParcelIds = null;
+                }
                 worldMap.removeParcelAt({ x: currentIntention.x_target, y: currentIntention.y_target });
                 if (sameMission(currentIntention, llmActiveMission)) completeActiveMission('pickup-complete');
                 clearIntention();
@@ -789,7 +860,8 @@ async function bdiStep(): Promise<void> {
             if (!currentPath?.length)
                 currentPath = await planPath(myAgent.pos, { x: currentIntention.x_target, y: currentIntention.y_target });
             if (!currentPath?.length) {
-                handleNoPath(`go_pickup:${currentIntention.x_target},${currentIntention.y_target}`, 'parcel');
+                // Target may be in unexplored territory — step directionally so the worldMap expands.
+                await stepToward({ x: currentIntention.x_target, y: currentIntention.y_target });
                 return;
             }
             await stepTowards(currentPath[0], utils.nextPosition(myAgent.pos, currentPath[0]));
@@ -912,12 +984,19 @@ async function bdiStep(): Promise<void> {
             const distToMeet = Math.abs(myPos.x - meetPos.x) + Math.abs(myPos.y - meetPos.y);
             const currentTileType = worldMap?.tiles.get(`${myPos.x},${myPos.y}`);
 
+            // Distance to the deliverer's actual current position
+            const delivererEntry = partnerAgentId ? worldMap.other_agents.get(partnerAgentId) : null;
+            const distToDeliverer = delivererEntry
+                ? Math.abs(myPos.x - Math.round(delivererEntry.pos.x)) + Math.abs(myPos.y - Math.round(delivererEntry.pos.y))
+                : Infinity;
+
             // 1. ARRIVAL & DROP CHECK
             const dropKey = `${myPos.x},${myPos.y}`;
-            
-            // FIX: Allow drop if we are on type '0' OR '1'
+
             const isValidDropTile = currentTileType === '0' || currentTileType === '1';
-            const canTryDrop = distToMeet <= 1 && isValidDropTile && !tempBlockedCells.has(`cursed_${dropKey}`);
+            // Drop when AT the meeting point OR when standing adjacent to the deliverer (handles
+            // the case where the deliverer is blocking the exact meeting tile).
+            const canTryDrop = (distToMeet === 0 || distToDeliverer <= 1) && isValidDropTile && !tempBlockedCells.has(`cursed_${dropKey}`);
 
             if (canTryDrop) {
                 const res = await socket.emitPutdown();
@@ -925,6 +1004,9 @@ async function bdiStep(): Promise<void> {
                 if (Array.isArray(res) && res.length > 0) {
                     console.log(`[Handoff] Picker: successfully dropped at (${myPos.x},${myPos.y})`);
                     carrying = carrying.filter(c => !res.some((dropped: any) => dropped.id === c.id));
+                    for (const dropped of res) handoffDroppedIds.add(dropped.id);
+                    handoffDroppedAt = Date.now();
+                    console.log(`[Handoff] Picker: blocking re-pickup of IDs: ${res.map((d: any) => d.id).join(', ')}`);
                     
                     if (partnerAgentId) {
                         socket.emitSay(partnerAgentId, JSON.stringify({
@@ -1003,7 +1085,9 @@ async function bdiStep(): Promise<void> {
             if (!currentPath?.length)
                 currentPath = await planPath(myAgent.pos, meetPos);
             if (!currentPath?.length) {
-                debug('[Handoff] Deliverer: no path to meeting tile, holding');
+                // Meeting point outside known map — step directionally so the worldMap expands.
+                console.log(`[Handoff] Deliverer: no known path to (${meetPos.x},${meetPos.y}), stepping toward it`);
+                await stepToward(meetPos);
                 return;
             }
             await stepTowards(currentPath[0], utils.nextPosition(myAgent.pos, currentPath[0]));
