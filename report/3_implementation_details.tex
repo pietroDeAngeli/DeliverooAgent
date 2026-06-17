@@ -1,12 +1,10 @@
-\subsection{Utility Functions}
-\label{sec:utility_fun}
+\subsection{Utility Functions}\label{sec:utility_fun}
 
 The utility functions define the heuristics used by the agent to rank candidate
 desires. Each utility combines the expected reward of an action with its travel
 cost and possible risk factors.
 
-\subsubsection{Pick up utility}
-\label{sec:pickup_utility}
+\subsubsection{Pick up utility}\label{sec:pickup_utility}
 For a \texttt{go\_pickup} desire targeting parcel $p$ at position $\mathbf{q}$,
 the utility is computed as the sum of two terms: the expected value of the
 parcels already carried by the agent and the expected value of the new parcel.
@@ -44,8 +42,7 @@ V_{\text{parcel}}(p,\mathbf{q}) =
 is the estimated net value of the new parcel, calculated by subtracting the expected decay incurred during the transit from its position $\mathbf{q}$ to the nearest delivery tile $\mathbf{d}$ from its base reward $r_p$. The final term, $P_{\text{risk}}(\mathbf{q})$, represents an environmental safety coefficient bounded between $0$ and $1$ that penalizes the target's utility based on the proximity of threats modeling the operational risk of the parcel being intercepted or stolen before the agent can reach the coordinates $\mathbf{q}$.
 
 % ----------
-\subsubsection{Delivery utility}
-\label{sec:delivery_utility}
+\subsubsection{Delivery utility}\label{sec:delivery_utility}
 For a \texttt{go\_delivery} desire targeting delivery tile $\mathbf{d}$, the
 utility estimates the remaining value of the currently carried parcels after
 the trip:
@@ -63,8 +60,7 @@ where $R_{\text{carry}}$ is the current reward of the carried items, which decay
 The penalty term $P_{\text{risk}}(\mathbf{d})$ handles stationary threats. The agent targets the three closest hazard-free delivery tiles ($P_{\text{risk}} = 1$). If all available delivery positions are blocked by stationary enemies, the agent falls back to these targets but scales their utility by $P_{\text{risk}} = 0.1$ to penalize the high-risk action.
 
 % ----
-\subsubsection{Explore utility}
-\label{sec:explore_utility}
+\subsubsection{Explore utility}\label{sec:explore_utility}
 For an \texttt{explore} desire targeting tile $s$, the utility rewards tiles that have not been visited recently, balanced against the distance required to reach them:
 
 \vspace{-1em}

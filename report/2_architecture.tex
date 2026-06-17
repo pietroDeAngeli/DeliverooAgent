@@ -1,5 +1,4 @@
-\section{System Architecture}
-\label{sec:arch}
+\section{System Architecture}\label{sec:arch}
 
 \subsection{Overview}
 The system operates on a reactive sense-deliberate-act cycle, where each server-side sensing event drives a new iteration of the BDI loop.
@@ -25,13 +24,9 @@ The entry point \texttt{main.ts} wires all components together, handles the WebS
 The BDI layer is split across three files.
 
 \paragraph{Beliefs (\texttt{BDI/Belief.ts}).}
-The belief layer implements the \textbf{belief update} step of the BDI architecture, maintaining an internal representation of the environment under partial observability. During initialization, the agent builds the static map and stores its initial position. Subsequent sensing events update the dynamic state, including parcels, crates, and other agents.
+The belief layer implements the \textbf{belief update} step of the BDI architecture under partial observability: the agent builds the static map and initial position at startup, then updates the dynamic state (parcels, crates, other agents) from each sensing event. Beliefs are stored in the \texttt{World} as coordinate-indexed maps, with entities leaving the observation range retained briefly via timestamp-based lifespans, giving short-term memory and supporting derived data such as opponent tracking.
 
-Beliefs are stored in the \texttt{World} as coordinate-indexed maps. New observations update the current state, while entities that leave the observation range are retained briefly through timestamp-based lifespans, providing limited short-term memory.
-
-The belief update process also derives task-relevant information from observations, such as tracking opponent movements and maintaining obstacle information.
-
-Finally, \textbf{belief revision} allows the agent to avoid cells considered temporarily blocked, either due to dynamic obstacles detected between sensing cycles or cells marked as inaccessible from LLM-interpreted instructions. As a result, the belief state combines current observations, persistent map knowledge, and short-term memory to support intention selection and execution.
+\textbf{Belief revision} lets the agent avoid cells considered temporarily blocked, either from dynamic obstacles or from LLM-marked inaccessible cells, combining observations, map knowledge, and short-term memory to support intention selection.
 
 \paragraph{Desires (\texttt{BDI/Desire.ts}).} 
 A Desire is represented as a tuple $\langle \text{type}, x, y, u \rangle$, where $u \in \mathbb{R}$ denotes its utility score. The agent generates three internal desire types:
@@ -61,21 +56,20 @@ The PDDL-based module leverages the \textit{Fast Downward} planner, configuring 
 Furthermore, the PDDL domain is designed to support crate manipulation in single-agent scenarios, enabling the agent to plan crate movements to navigate more complex environments. However, crate handling in cooperative multi-agent settings is not currently supported.
 
 
-\subsection{LLM Component}
-\label{sec:llm}
+\subsection{LLM Component}\label{sec:llm}
 
 The LLM component processes textual user inputs and extracts the structured information required to update the BDI agent's state. For this purpose, we selected the \textit{Llama-3.3-70B} model. To optimize performance and context window efficiency, we condition the model's short-term memory using concise system prompts paired with tailored \textit{few-shot examples} for each specific task.
 
 The LLM component is designed to handle and execute a variety of tasks, which can be categorized into three levels of complexity:
 \begin{itemize}
-    \item \textbf{Atomic Special Missions (Level 1):} Simple, self-contained tasks that either produce a direct reply or inject a single transient update into the BDI loop. These include mathematical computations (\texttt{calculate}), time zone queries (\texttt{get\_current\_time}), position reports (\texttt{get\_my\_position}), common-knowledge questions \\(\texttt{common\_knowledge}), and tile-level navigation or avoidance goals (\texttt{generate\_desire}).
+    \item \textbf{Atomic Special Missions (Level 1):} Self-contained tasks that produce a direct reply or a single transient BDI update: math (\texttt{calculate}), time zone queries (\texttt{get\_current\_time}), position reports (\texttt{get\_my\_position}), common-knowledge questions (\texttt{common\_knowledge}), and tile-level navigation or avoidance goals (\texttt{generate\_desire}).
 
-    \item \textbf{Intermediate Persistent Missions (Level 2):} Non-atomic, match-wide rules that remain active for the entire run and are maintained in dedicated runtime data structures. These include directional delivery constraints that restrict the agent to specific drop-off zones (\texttt{generate\_delivery\_constraint}); reward-multiplier rules conditioned on the parcel count or total carried score at delivery time \\(\texttt{generate\_stack\_constraint}); and tile-specific delivery bonuses or blocks \\(\texttt{generate\_desire} with \texttt{go\_delivery} or \texttt{avoid\_delivery} sub-actions). The corresponding state is stored in dedicated maps and lists (\texttt{llmDeliveryBonusTiles}, \texttt{llmStackConstraints}, \texttt{llmBlockedDeliveryTiles}) that are consulted at every BDI step to bias or override autonomous utility scoring.
+    \item \textbf{Intermediate Persistent Missions (Level 2):} Match-wide rules kept in dedicated runtime structures and consulted at every BDI step to bias or override utility scoring: directional delivery constraints (\texttt{generate\_delivery\_constraint}), reward-multiplier rules on parcel count or carried score (\texttt{generate\_stack\_constraint}), and tile-specific delivery bonuses or blocks (\texttt{generate\_desire} with \texttt{go\_delivery}/\texttt{avoid\_delivery}).
 
-    \item \textbf{Coordination or Communication Missions (Level 3):} High-complexity tasks that require explicit peer-to-peer communication between the two agents \\(\texttt{multi\_agent\_command}). These cover four sub-commands: \textit{rendezvous} at an explicit grid position within a configurable maximum distance; \textit{wait\_row} (red-light) to stop both agents on a row of specified parity; \textit{resume} (green-light) to lift a wait hold; and \textit{parcel\_handoff}, where one agent picks up a parcel and meets the other at a BFS-computed meeting tile so the latter can deliver it for a bonus reward.
+    \item \textbf{Coordination or Communication Missions (Level 3):} Tasks requiring explicit peer-to-peer communication (\texttt{multi\_agent\_command}), covering four sub-commands: \textit{rendezvous} at a grid position within a configurable maximum distance; \textit{wait\_row}/\textit{resume} (red/green light) to hold or release both agents; and \textit{parcel\_handoff}, where one agent meets the other at a BFS-computed tile to hand off a parcel for a bonus reward.
 \end{itemize}
 
-The core logic is managed by an orchestrator through the \textit{processMessage} function. The message is first cleaned by a \textit{mathExtractor} call, which identifies nested arithmetic expressions, replaces them with placeholders, and resolves them through a deterministic \textit{calculate} tool rather than risking LLM hallucination on numeric results. A \textit{splitter} call then divides concatenated requests into independent sub-goals (e.g., separating a navigation request from an arithmetic question). Each sub-goal is classified by the orchestrator into one of eight action labels (\texttt{calculate}, \texttt{get\_current\_time}, \texttt{get\_my\_position}, \texttt{common\_knowledge}, \texttt{generate\_desire}, \texttt{generate\_delivery\_constraint}, \texttt{generate\_stack\_constraint}, \\ \texttt{multi\_agent\_command}), and a dedicated extractor then retrieves its structured parameters and populates the corresponding field of the \texttt{LLMUpdate} object: direct-reply actions append text to the response, while BDI-update actions populate typed fields such as \texttt{goToTiles}, \texttt{deliveryConstraints}, \texttt{stackConstraints}, or \texttt{multiAgentCommand}.
+The core logic is managed by an orchestrator through the \textit{processMessage} function. The message is first cleaned by a \textit{mathExtractor} call, which resolves nested arithmetic expressions through the deterministic \textit{calculate} tool rather than risking LLM hallucination on numbers. A \textit{splitter} call then divides concatenated requests into independent sub-goals. Each sub-goal is classified by the orchestrator into one of eight action labels, and a dedicated extractor retrieves its structured parameters into the corresponding field of the \texttt{LLMUpdate} object: direct-reply actions append text to the response, while BDI-update actions populate typed fields such as \texttt{goToTiles}, \texttt{deliveryConstraints}, \texttt{stackConstraints}, or \texttt{multiAgentCommand}.
 
 The \texttt{generate\_desire} action deserves special attention: its extractor produces one of four sub-actions --- \texttt{go\_to}, \texttt{avoid}, \texttt{go\_delivery}, or \texttt{avoid\_delivery} --- cleanly separating movement goals from delivery-zone preferences without requiring separate orchestrator labels.
 
