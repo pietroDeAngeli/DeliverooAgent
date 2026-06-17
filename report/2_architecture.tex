@@ -1,4 +1,5 @@
-\section{System Architecture}\label{sec:arch}
+\section{System Architecture}
+\label{sec:arch}
 
 \subsection{Overview}
 The system operates on a reactive sense-deliberate-act cycle, where each server-side sensing event drives a new iteration of the BDI loop.
@@ -7,7 +8,8 @@ Figure~\ref{fig:agent_architecture} sketches the high-level data flow.
 \begin{figure}[H]
     \centering
     \includegraphics[width=1\textwidth]{images/agent_architecture.png} 
-    \caption{Agent Architecture}\label{fig:agent_architecture}
+    \caption{Agent Architecture} 
+    \label{fig:agent_architecture}
 \end{figure}
 
 The system comprises three main subsystems:
@@ -22,37 +24,34 @@ The entry point \texttt{main.ts} wires all components together, handles the WebS
 \subsection{BDI Agent Model}
 The BDI layer is split across three files.
 
-\paragraph{Beliefs (\texttt{BDI/Belief.ts}).} 
-The belief layer implements the agent's belief update step, maintaining an internal representation of the environment under partial observability.
-During initialization, the main socket handlers configure the agent parameters, build the static map, and initialize the agent's own position. After this setup, each sensing event updates the dynamic part of the world state, including parcels, crates, and other agents.
+\paragraph{Beliefs (\texttt{BDI/Belief.ts}).}
+The belief layer implements the \textbf{belief update} step of the BDI architecture, maintaining an internal representation of the environment under partial observability. During initialization, the agent builds the static map and stores its initial position. Subsequent sensing events update the dynamic state, including parcels, crates, and other agents.
 
-Beliefs are stored inside the \texttt{World} object as coordinate-indexed maps. When new observations arrive, \textbf{beliefs} are \textbf{updated}. Entities that are temporarily outside the observation range are not removed immediately; instead, they are kept for a short time using timestamp-based lifespans. This provides the agent with limited short-term memory, making its behavior more robust to partial observability.
+Beliefs are stored in the \texttt{World} as coordinate-indexed maps. New observations update the current state, while entities that leave the observation range are retained briefly through timestamp-based lifespans, providing limited short-term memory.
 
-The belief update also enriches the raw observations with task-relevant information. For example, opponent positions can be tracked over time to infer movement direction or stationary behavior, while crates positions are refreshed when visible and later used for obstacle modeling. In parallel, the main loop keeps an auxiliary state such as the list of carried parcels by the agent.
+The belief update process also derives task-relevant information from observations, such as tracking opponent movements and maintaining obstacle information.
 
-\textbf{Belief revision} allows the agent to avoid temporarily blocked cells even when no obstacle is explicitly observed. This accounts for dynamic obstructions, such as agents moving into a cell between sensing cycles (which are then corrected at the next \texttt{onSensing} event), as well as cells flagged as blocked via LLM-interpreted textual instructions.
-
-Overall, the belief state is therefore not limited to the latest sensor reading. It combines persistent map information, short-lived memories of dynamic entities, and auxiliary runtime state needed by the BDI loop to select and execute intentions.
+Finally, \textbf{belief revision} allows the agent to avoid cells considered temporarily blocked, either due to dynamic obstacles detected between sensing cycles or cells marked as inaccessible from LLM-interpreted instructions. As a result, the belief state combines current observations, persistent map knowledge, and short-term memory to support intention selection and execution.
 
 \paragraph{Desires (\texttt{BDI/Desire.ts}).} 
 A Desire is represented as a tuple $\langle \text{type}, x, y, u \rangle$, where $u \in \mathbb{R}$ denotes its utility score. The agent generates three internal desire types:
 
 \begin{itemize}
-    \item \textbf{\texttt{go\_pickup}}: generated for each visible parcel that is not currently being carried. Its utility \ref{sec:pickup_utility} depends on the parcel reward, the distance required to reach it, and the distance from the parcel to the nearest delivery zone. The score is also reduced when opponents are close to the pickup location, using a competitive penalty based on the number of nearby agents.
+    \item \textbf{\texttt{go\_pickup}}: generated for each visible, uncarried parcel; its utility (Sec.~\ref{sec:pickup_utility}) trades off reward, distance, and competitive risk.
     
-    \item \textbf{\texttt{go\_delivery}}: generated when the agent is carrying at least one parcel. Its utility \ref{sec:delivery_utility} estimates the remaining reward obtainable by reaching the closest free delivery tile, subtracting the expected decay cost of the trip. Delivery tiles occupied by stationary opponents are penalized.
+    \item \textbf{\texttt{go\_delivery}}: generated while carrying at least one parcel; its utility (Sec.~\ref{sec:delivery_utility}) estimates the remaining reward net of decay and opponent occupancy at delivery tiles.
     
-    \item \textbf{\texttt{explore}}: generated as a fallback behavior to guide the agent toward high-density spawn regions that have not been visited recently. Its score combines recency, BFS distance, spawn-cluster density, and opponent pressure \ref{sec:explore_utility}. Multiple exploration candidates are generated so that the agent can switch to an alternative target if one path becomes unreachable.
+    \item \textbf{\texttt{explore}}: fallback behavior guiding the agent toward unvisited, high-density spawn regions (Sec.~\ref{sec:explore_utility}); multiple candidates are generated to allow switching if a path becomes unreachable.
 \end{itemize}
-
-A fourth desire type, \texttt{go\_to}, is injected exclusively by the LLM component, as described in Section~\ref{sec:llm}. New atomic LLM tasks have to be inserted at this level of the architecture.
 
 \paragraph{Intentions (\texttt{BDI/Intentions.ts}).} 
 The \texttt{reviseIntention} function implements the agent's \textbf{intention revision} policy, which is executed at every BDI step. Based on the updated beliefs and a list of desires sorted by utility, this function determines whether the agent should maintain its current commitment or switch to a better candidate.
 
 The control flow handles two main scenarios. If no intention is currently active, the agent automatically commits to the highest-utility desire. Conversely, if an intention is already active, its ongoing \textit{validity} is verified against the current world state. Specifically, delivery intentions remain valid only while the agent is carrying at least one parcel, whereas pickup intentions are kept only as long as the target parcel is still available on the map. Exploration intentions, on the other hand, are always considered valid and act as a fallback behavior when no other tasks can be performed. If the active intention fails its respective validity check, it is immediately discarded and replaced by the best available desire. Intentions can be \textbf{blocked} after a fixed number of failures and the agent automatically switch intention to the next best one. 
 
-The BDI intention system is also extended to accommodate \textbf{LLM-injected missions}. Missions extracted from natural-language instructions --- such as navigation goals (\texttt{go\_to}), forced delivery targets (\texttt{go\_delivery}), synchronized wait requests (\texttt{wait\_row}), or rendezvous points --- are queued in a dedicated ordered list (\texttt{llmPendingMissions}) and promoted one at a time to an active slot (\texttt{llmActiveMission}). These missions carry a high default utility value so that they preempt lower-priority autonomous desires. Stack-constraint rules and delivery-bonus modifiers, by contrast, do not generate new intentions: they instead parametrize the utility computation of existing desire types, allowing external instructions to reshape the agent's preference ordering without bypassing the normal revision cycle. Upon completion, the active LLM mission is cleared and the agent seamlessly reverts to autonomous behavior.
+The BDI intention system is extended to support \textbf{LLM-injected missions}. Missions extracted from natural-language instructions, such as navigation goals (\texttt{go\_to}), forced deliveries (\texttt{go\_delivery}), synchronized waits (\texttt{wait\_row}), or rendezvous points, are stored in an ordered queue (\texttt{llmPendingMissions}) and promoted one at a time to an active slot (\texttt{llmActiveMission}). These missions are assigned a high utility value, allowing them to preempt lower-priority autonomous desires.
+
+By contrast, stack constraints and delivery bonuses do not create new intentions. Instead, they modify the utility computation of existing desires, enabling external instructions to influence the agent's preference ordering while preserving the standard revision process. Once an LLM mission is completed, it is removed and the agent resumes its autonomous behavior.
 
 \subsection{Planning Component}
 The planning component enables the agent to compute a path toward a target tile. To evaluate the performance and efficiency of the planning subsystem, we implement a Breadth-First Search (BFS) algorithm as a baseline for shortest-path calculation and compare it against a classical automated planning approach using PDDL. 
@@ -62,39 +61,26 @@ The PDDL-based module leverages the \textit{Fast Downward} planner, configuring 
 Furthermore, the PDDL domain is designed to support crate manipulation in single-agent scenarios, enabling the agent to plan crate movements to navigate more complex environments. However, crate handling in cooperative multi-agent settings is not currently supported.
 
 
-\subsection{LLM Component}\label{sec:llm}
+\subsection{LLM Component}
+\label{sec:llm}
 
-The LLM component processes textual user inputs and extracts the structured information required to update the BDI agent's state. For this purpose, we selected the \textit{Llama-3.3-70B} model due to its advanced reasoning capabilities. To optimize performance and context window efficiency, we condition the model's short-term memory using concise system prompts paired with tailored \textit{few-shot examples} for each specific task.
+The LLM component processes textual user inputs and extracts the structured information required to update the BDI agent's state. For this purpose, we selected the \textit{Llama-3.3-70B} model. To optimize performance and context window efficiency, we condition the model's short-term memory using concise system prompts paired with tailored \textit{few-shot examples} for each specific task.
 
 The LLM component is designed to handle and execute a variety of tasks, which can be categorized into three levels of complexity:
 \begin{itemize}
     \item \textbf{Atomic Special Missions (Level 1):} Simple, self-contained tasks that either produce a direct reply or inject a single transient update into the BDI loop. These include mathematical computations (\texttt{calculate}), time zone queries (\texttt{get\_current\_time}), position reports (\texttt{get\_my\_position}), common-knowledge questions \\(\texttt{common\_knowledge}), and tile-level navigation or avoidance goals (\texttt{generate\_desire}).
 
-    \item \textbf{Intermediate Persistent Missions (Level 2):} Non-atomic, match-wide rules that remain active for the entire run and are maintained in dedicated runtime data structures. These include directional delivery constraints that restrict the agent to specific drop-off zones (\texttt{generate\_delivery\_constraint}); reward-multiplier rules conditioned on the parcel count or total carried score at delivery time \\(\texttt{generate\_stack\_constraint}); and tile-specific delivery bonuses or blocks (\texttt{generate\_desire} with \texttt{go\_delivery} or \texttt{avoid\_delivery} sub-actions). The corresponding state is stored in dedicated maps and lists (\texttt{llmDeliveryBonusTiles}, \texttt{llmStackConstraints}, \texttt{llmBlockedDeliveryTiles}) that are consulted at every BDI step to bias or override autonomous utility scoring.
+    \item \textbf{Intermediate Persistent Missions (Level 2):} Non-atomic, match-wide rules that remain active for the entire run and are maintained in dedicated runtime data structures. These include directional delivery constraints that restrict the agent to specific drop-off zones (\texttt{generate\_delivery\_constraint}); reward-multiplier rules conditioned on the parcel count or total carried score at delivery time \\(\texttt{generate\_stack\_constraint}); and tile-specific delivery bonuses or blocks \\(\texttt{generate\_desire} with \texttt{go\_delivery} or \texttt{avoid\_delivery} sub-actions). The corresponding state is stored in dedicated maps and lists (\texttt{llmDeliveryBonusTiles}, \texttt{llmStackConstraints}, \texttt{llmBlockedDeliveryTiles}) that are consulted at every BDI step to bias or override autonomous utility scoring.
 
     \item \textbf{Coordination or Communication Missions (Level 3):} High-complexity tasks that require explicit peer-to-peer communication between the two agents \\(\texttt{multi\_agent\_command}). These cover four sub-commands: \textit{rendezvous} at an explicit grid position within a configurable maximum distance; \textit{wait\_row} (red-light) to stop both agents on a row of specified parity; \textit{resume} (green-light) to lift a wait hold; and \textit{parcel\_handoff}, where one agent picks up a parcel and meets the other at a BFS-computed meeting tile so the latter can deliver it for a bonus reward.
 \end{itemize}
 
-The core logic is managed by an orchestrator through the \textit{processMessage} function, which executes the following pipeline:
-\begin{enumerate}
-    \item \textbf{Mathematical Pre-processing:} The message is first passed to the \textit{mathExtractor} (first LLM call). It identifies nested arithmetic operations, replaces them with unique placeholders (e.g., $X1, X2$), and returns a structured JSON object. The orchestrator then invokes a deterministic \textit{calculate} tool to resolve these expressions and injects the actual results back into the text. This prevents LLM hallucinations and gracefully handles complex, nested calculations.
-    \item \textbf{Utterance Splitting:} The cleaned message is processed by the \textit{splitter} component (second LLM call), which divides concatenated or complex queries into a list of independent sub-goals (e.g., splitting "go to tile 0,0 and tell me the square root of four" into two separate tasks).
-    \item \textbf{Action Classification:} Each sub-goal is evaluated by the \textit{orchestrator} (third LLM call) to predict one of eight action labels: \texttt{calculate}, \texttt{get\_current\_time}, \texttt{get\_my\_position}, \texttt{common\_knowledge}, \texttt{generate\_desire}, \texttt{generate\_delivery\_constraint}, \texttt{generate\_stack\_constraint}, or \texttt{multi\_agent\_command}.
-    \item \textbf{Parameterized Dispatch:} Based on the predicted action, a dedicated extractor (additional LLM call) retrieves the structured parameters required by that action and populates the corresponding field of the \texttt{LLMUpdate} object. Direct-reply actions (\texttt{calculate}, \texttt{get\_current\_time}, \texttt{get\_my\_position}, \texttt{common\_knowledge}) append a text answer to the response string. BDI-update actions populate typed fields within \texttt{LLMUpdate}: \texttt{goToTiles} and \texttt{blockedTiles} for movement goals and avoidances, \texttt{deliveryConstraints} for directional drop-off preferences, \texttt{deliveryBonusTiles} and \texttt{blockedDeliveryTiles} for per-tile delivery modifiers, \texttt{stackConstraints} for reward-multiplier rules, and \texttt{multiAgentCommand} for the current coordination command.
-\end{enumerate}
+The core logic is managed by an orchestrator through the \textit{processMessage} function. The message is first cleaned by a \textit{mathExtractor} call, which identifies nested arithmetic expressions, replaces them with placeholders, and resolves them through a deterministic \textit{calculate} tool rather than risking LLM hallucination on numeric results. A \textit{splitter} call then divides concatenated requests into independent sub-goals (e.g., separating a navigation request from an arithmetic question). Each sub-goal is classified by the orchestrator into one of eight action labels (\texttt{calculate}, \texttt{get\_current\_time}, \texttt{get\_my\_position}, \texttt{common\_knowledge}, \texttt{generate\_desire}, \texttt{generate\_delivery\_constraint}, \texttt{generate\_stack\_constraint}, \\ \texttt{multi\_agent\_command}), and a dedicated extractor then retrieves its structured parameters and populates the corresponding field of the \texttt{LLMUpdate} object: direct-reply actions append text to the response, while BDI-update actions populate typed fields such as \texttt{goToTiles}, \texttt{deliveryConstraints}, \texttt{stackConstraints}, or \texttt{multiAgentCommand}.
 
-The \texttt{generate\_desire} action deserves special attention: its dedicated extractor produces one of four sub-actions --- \texttt{go\_to} (navigate to a tile for bonus points), \texttt{avoid} (block a tile entirely), \texttt{go\_delivery} (register a delivery reward multiplier at a specific tile), or \texttt{avoid\_delivery} (forbid delivery at a tile while still allowing traversal). This design cleanly separates movement goals from delivery-zone preferences without requiring separate orchestrator action labels.
+The \texttt{generate\_desire} action deserves special attention: its extractor produces one of four sub-actions --- \texttt{go\_to}, \texttt{avoid}, \texttt{go\_delivery}, or \texttt{avoid\_delivery} --- cleanly separating movement goals from delivery-zone preferences without requiring separate orchestrator labels.
 
-The orchestrator aggregates the results, returning both a textual answer (to be replied via chat) and the populated \texttt{LLMUpdate} object to be injected into the agent's state.
+The orchestrator aggregates the results, returning both a textual reply and the populated \texttt{LLMUpdate} object to be injected into the agent's state. The multi-call pipeline introduces minor latency, but this is acceptable given the sporadic, non-real-time nature of the requests, and the modular design allows each component to be evaluated and tuned independently.
 
-While this multi-step pipeline introduces a minor computational overhead due to consecutive LLM calls, it remains fully sustainable within the project's scope. The challenge constraints are relatively relaxed, as requests occur sporadically and do not require real-time, millisecond-range execution; this makes architectural robustness and accuracy preferable over raw speed. Moreover, this modular design allows for individual performance evaluation of each component, enabling targeted adjustments at every step.
+The agent's deterministic \textbf{tools} module exposes three functions: \textbf{calculate}, a sandboxed expression evaluator that whitelists allowed syntax instead of using a global \textit{eval}, supporting standard \textit{Math} functions and constants; \textbf{getCurrentTime}, which resolves a city to its timezone via \textit{city-timezones} and formats the result with \textit{Intl.DateTimeFormat}; and \textbf{getMyPosition}, which returns the agent's current coordinates.
 
-The \textbf{tools} implemented to support the agent's actions are contained in a dedicated module that exposes the following functions:
-
-\begin{itemize}
-    \item \textbf{calculate}: A secure mathematical expression evaluator. Instead of using a dangerous global \textit{eval}, it parses the input string, validates it against a strict whitelist of allowed characters and syntax to prevent code injection, and executes the calculus using a safe subset of the native JavaScript \textit{Math} object (supporting functions like \textit{sqrt, pow, sin} and constants like $\pi$ and $e$).
-    \item \textbf{getCurrentTime}: Retrieves the local date and time for a given city. It dynamically imports the external library \textit{city-timezones} to look up the correct timezone. The time formatting is handled natively via the JavaScript \textit{Intl.DateTimeFormat} API.
-    \item \textbf{getMyPosition}: A utility function that reads the agent's current state and returns a formatted string with its coordinates $(x, y)$.
-\end{itemize}
-
-All calculated answers and structured game-state updates are subsequently forwarded also to the \textit{only BDI} agent, ensuring it possesses all the necessary data to execute the required actions and successfully claim the points for the completed request.
+All calculated answers and structured updates are also forwarded to the BDI agent, ensuring it has the data needed to execute and claim the points for the completed request.

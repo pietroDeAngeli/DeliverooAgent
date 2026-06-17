@@ -1,10 +1,12 @@
-\subsection{Utility Functions}\label{sec:utility_fun}
+\subsection{Utility Functions}
+\label{sec:utility_fun}
 
 The utility functions define the heuristics used by the agent to rank candidate
 desires. Each utility combines the expected reward of an action with its travel
 cost and possible risk factors.
 
-\subsubsection{Pick up utility}\label{sec:pickup_utility}
+\subsubsection{Pick up utility}
+\label{sec:pickup_utility}
 For a \texttt{go\_pickup} desire targeting parcel $p$ at position $\mathbf{q}$,
 the utility is computed as the sum of two terms: the expected value of the
 parcels already carried by the agent and the expected value of the new parcel.
@@ -42,7 +44,8 @@ V_{\text{parcel}}(p,\mathbf{q}) =
 is the estimated net value of the new parcel, calculated by subtracting the expected decay incurred during the transit from its position $\mathbf{q}$ to the nearest delivery tile $\mathbf{d}$ from its base reward $r_p$. The final term, $P_{\text{risk}}(\mathbf{q})$, represents an environmental safety coefficient bounded between $0$ and $1$ that penalizes the target's utility based on the proximity of threats modeling the operational risk of the parcel being intercepted or stolen before the agent can reach the coordinates $\mathbf{q}$.
 
 % ----------
-\subsubsection{Delivery utility}\label{sec:delivery_utility}
+\subsubsection{Delivery utility}
+\label{sec:delivery_utility}
 For a \texttt{go\_delivery} desire targeting delivery tile $\mathbf{d}$, the
 utility estimates the remaining value of the currently carried parcels after
 the trip:
@@ -60,7 +63,8 @@ where $R_{\text{carry}}$ is the current reward of the carried items, which decay
 The penalty term $P_{\text{risk}}(\mathbf{d})$ handles stationary threats. The agent targets the three closest hazard-free delivery tiles ($P_{\text{risk}} = 1$). If all available delivery positions are blocked by stationary enemies, the agent falls back to these targets but scales their utility by $P_{\text{risk}} = 0.1$ to penalize the high-risk action.
 
 % ----
-\subsubsection{Explore utility}\label{sec:explore_utility}
+\subsubsection{Explore utility}
+\label{sec:explore_utility}
 For an \texttt{explore} desire targeting tile $s$, the utility rewards tiles that have not been visited recently, balanced against the distance required to reach them:
 
 \vspace{-1em}
@@ -85,23 +89,15 @@ To ensure smooth navigation, the agent proactively predicts potential collisions
 
 The multi-agent architecture follows a \textbf{master/slave} deployment model. One agent is designated as the \textit{master} (\texttt{IS\_MASTER=true}) and the other as the \textit{slave}. The master agent is the sole point of entry for all natural-language instructions: it runs the full LLM pipeline and, immediately after each \texttt{processMessage} call, forwards the resulting \texttt{LLMUpdate} payload to the slave via a \texttt{LLM\_UPDATE} peer message. Both agents then apply the same structured update to their respective BDI loops, ensuring synchronized belief state without requiring the slave to carry its own LLM client.
 
-Communication relies on the Deliveroo.js peer-to-peer messaging layer (\texttt{socket.emitSay} / \texttt{socket.onMsg}). Partner discovery is automatic: the first non-admin incoming message is used to register the partner's agent ID. Five dedicated message kinds support the coordination protocols:
-
-\begin{itemize}
-    \item \textbf{\texttt{LLM\_UPDATE}}: carries the full \texttt{LLMUpdate} payload from master to slave after each processed instruction.
-    \item \textbf{\texttt{RENDEZVOUS\_ARRIVED}}: broadcast by an agent that has entered the rendezvous radius, signalling that it is in position. Upon receipt, an agent already within range immediately completes the mission.
-    \item \textbf{\texttt{HANDOFF\_SLAVE\_POS}}: sent by the slave (deliverer) immediately upon receiving a \texttt{parcel\_handoff} command, reporting its current coordinates so the master (picker) can compute the optimal meeting tile.
-    \item \textbf{\texttt{HANDOFF\_APPROACH}}: sent by the picker once it has acquired a parcel, notifying the deliverer of the picker's current position so the deliverer can start converging.
-    \item \textbf{\texttt{HANDOFF\_DROPPED}}: sent by the picker after it has dropped the parcel at the meeting tile, including the parcel list and drop coordinates, so the deliverer can navigate directly to the tile for pickup.
-\end{itemize}
+Communication relies on the Deliveroo.js peer-to-peer messaging layer (\texttt{socket.emitSay} / \texttt{socket.onMsg}), with automatic partner discovery from the first non-admin incoming message. Five message kinds support the coordination protocols: \texttt{LLM\_UPDATE} propagates each processed instruction from master to slave; \texttt{RENDEZVOUS\_ARRIVED} signals that an agent has reached the meeting radius, letting a partner already in range complete the mission; and three handoff-specific messages (\texttt{HANDOFF\_SLAVE\_POS}, \texttt{HANDOFF\_APPROACH}, \texttt{HANDOFF\_DROPPED}) exchange position and drop-off information during the parcel handoff protocol described below.
 
 \paragraph{Parcel Handoff Protocol.}
 When a \texttt{parcel\_handoff} command is received, the master assumes the \textit{picker} role and the slave assumes the \textit{deliverer} role. The protocol proceeds in three phases:
 
 \begin{enumerate}
-    \item \textbf{Meeting-point negotiation.} The slave immediately reports its position via \texttt{HANDOFF\_SLAVE\_POS}. The master waits up to a configurable timeout; if the report arrives in time, it runs a BFS-based meeting-point algorithm (\texttt{computeMeetingPoint}) that finds the walkable tile minimizing the sum of BFS distances from both agents, preferring tiles that are not trivially reachable in zero steps by either agent. If the slave position is not received within the timeout, the master aborts the handoff and reverts to normal delivery.
+    \item \textbf{Meeting-point negotiation.} The slave reports its position via \texttt{HANDOFF\_SLAVE\_POS}; if received within a configurable timeout, the master runs a BFS-based algorithm (\texttt{computeMeetingPoint}) that finds the walkable tile minimizing the summed BFS distance from both agents. Otherwise, the handoff is aborted and the master reverts to normal delivery.
 
-    \item \textbf{Acquisition and approach.} The picker acquires a target parcel via its normal BDI loop (highest-utility \texttt{go\_pickup} desire). Once a parcel is in hand, it transitions to the \texttt{handoff\_approach} phase, navigates toward the computed meeting tile, and sends \texttt{HANDOFF\_APPROACH} to the deliverer. The deliverer navigates to the same meeting tile. While in any handoff phase, both agents suppress normal delivery intentions to avoid premature drop-offs.
+    \item \textbf{Acquisition and approach.} The picker acquires a parcel via its normal BDI loop, then navigates toward the meeting tile and signals \texttt{HANDOFF\_APPROACH}. The deliverer converges on the same tile. Both agents suppress normal delivery intentions during this phase to avoid premature drop-offs.
 
-    \item \textbf{Drop and pickup.} When the picker reaches the meeting tile (Manhattan distance $\leq 1$), it drops the parcel via \texttt{emitPutdown} and broadcasts \texttt{HANDOFF\_DROPPED} with the drop coordinates and parcel list. The deliverer's belief state is pre-populated with the dropped parcel to ensure a non-empty pickup queue on arrival. The deliverer then picks up the parcel and delivers it for the bonus reward. A per-agent timeout at the meeting tile ensures the protocol degrades gracefully if either agent becomes stuck: the picker drops on timeout, and the deliverer abandons the wait after a separate timer expires.
+    \item \textbf{Drop and pickup.} Once the picker reaches the meeting tile (Manhattan distance $\leq 1$), it drops the parcel and broadcasts \texttt{HANDOFF\_DROPPED} with the drop coordinates; the deliverer's belief state is pre-populated accordingly, so it can immediately pick up and deliver the parcel for the bonus reward. Per-agent timeouts ensure graceful degradation if either agent gets stuck.
 \end{enumerate}

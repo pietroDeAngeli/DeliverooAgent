@@ -1,6 +1,6 @@
 \section{Limitations}
 \begin{itemize}
-  \item \textbf{LLM Latency Overhead:} The sequential multi-call pipeline introduces a cumulative latency. While acceptable for this challenge, it is unfeasible for real-time environments requiring millisecond-range responses.
-  \item \textbf{Lack of Competitive Evaluation:} Benchmarks were conducted in non-competitive scenarios without active adversarial agents. Testing against dynamic opponents is required to fully validate the resilience of the utility functions and strategic decision-making.
-  \item \textbf{Statistical Significance:} Because the results were collected from a single execution run per map, they lack a solid statistical baseline. Multiple runs are necessary to account for environmental stochasticity and evaluate performance consistency.
+  \item \textbf{LLM Latency Overhead:} The sequential multi-call pipeline introduces a cumulative latency, acceptable here but unfeasible for real-time, millisecond-range environments.
+  \item \textbf{Lack of Competitive Evaluation:} Benchmarks were run without active adversarial agents, so the resilience of the utility functions under dynamic opponents remains untested.
+  \item \textbf{Statistical Significance:} Results come from a single run per map; multiple runs would be needed to account for environmental stochasticity.
 \end{itemize}
