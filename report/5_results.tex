@@ -27,7 +27,30 @@ The performance variations depend strictly on the structural characteristics of 
 
 
 
-\TODO{Add results challenge 2}
+Table~\ref{tab:multi_agent_benchmark} reports the scores for the multi-agent scenario, where Agent~1 is the pure BDI agent and Agent~2 is the LLM-powered agent.
+
+\begin{table}[h]
+\centering
+\setlength{\tabcolsep}{10pt}
+\caption{Multi-agent performance: Pure BDI vs LLM-powered agent scores.}
+\label{tab:multi_agent_benchmark}
+\begin{tabular}{lrrc}
+\hline
+\textbf{Map} & \textbf{Pure BDI} & \textbf{LLM} & \textbf{Tested} \\ \hline
+26c1\_1 & 1069 & 1262 & $\checkmark$ \\
+26c1\_2 & 1098 & 1031 & $\checkmark$ \\
+26c1\_3 & 614 & 614 & $\checkmark$ \\
+26c1\_4 & --- & --- & $\square$ \\
+26c1\_5 & --- & --- & $\square$ \\
+26c1\_6 & 1697 & 1041 & $\checkmark$ \\
+26c1\_7 & --- & --- & $\square$ \\
+26c1\_8 & --- & --- & $\square$ \\ \hline
+\end{tabular}
+\end{table}
+
+Both agents share the same underlying BDI architecture described in Section~\ref{sec:architecture}; the LLM layer acts as an additional reasoning module on top of the reactive loop rather than a replacement. The score differences across maps are primarily driven by the complexity of the natural language instructions provided to the agents: simpler prompts allow the BDI planner to operate with minimal LLM overhead, while more complex directives introduce latency and occasional misclassifications that reduce the effective score. 
+
+It is worth noting that the reported scores could be higher if the server infrastructure provided a dedicated mechanism for awarding points based on textual prompt interactions; however, such a system is not strictly required, as bonus points of this kind are left to the discretion of the administrator.
 
 \subsection{LLM Components Evaluation Results}
 \label{sec:llm_results}
