@@ -32,11 +32,11 @@ Table~\ref{tab:multi_agent_benchmark} reports the scores for the multi-agent sce
 \begin{table}[h]
 \centering
 \setlength{\tabcolsep}{10pt}
-\caption{Multi-agent performance: Pure BDI vs LLM-powered agent scores.}
+\caption{Multi-agent performance: BDI and LLM-powered agent scores.}
 \label{tab:multi_agent_benchmark}
 \begin{tabular}{lrrc}
 \hline
-\textbf{Map} & \textbf{Pure BDI} & \textbf{LLM} & \textbf{Tested} \\ \hline
+\textbf{Map} & \textbf{BDI} & \textbf{LLM-powered} & \textbf{Tested} \\ \hline
 26c1\_1 & 1069 & 1262 & $\checkmark$ \\
 26c1\_2 & 1098 & 1031 & $\checkmark$ \\
 26c1\_3 & 614 & 614 & $\checkmark$ \\
@@ -49,7 +49,7 @@ Table~\ref{tab:multi_agent_benchmark} reports the scores for the multi-agent sce
 \end{table}
 
 Both agents share the same underlying BDI architecture described in Section~\ref{sec:arch}; the LLM layer acts as an additional reasoning module on top of the reactive loop rather than a replacement. 
-The score differences across maps are primarily driven by the complexity of the natural language instructions provided to the agents: simpler prompts allow the BDI planner to operate with minimal LLM overhead, while more complex directives introduce latency and occasional misclassifications that reduce the effective score. The results of the prompts tested are not included on the score, as the current server infrastructure can't take them into account by rendering the admin's inputs. 
+The score differences across maps are primarily driven by the complexity of the natural language instructions provided to the agents: simpler prompts allow the BDI planner to operate with minimal LLM overhead, while more complex directives introduce latency and occasional misclassifications that reduce the effective score. The results, or points, of the prompts tested are not included on the score, as the current server infrastructure can't take them into account by rendering the admin's inputs and, even if it was the case, they wouldn't produce a fair comparison with the pure BDI's points in \ref{tab:single_agent_benchmark}, as it doesn't present an additional source of points.
 
 \subsection{LLM Components Evaluation Results}
 \label{sec:llm_results}

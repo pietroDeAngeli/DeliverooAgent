@@ -1,0 +1,167 @@
+\newpage
+
+\section{Prompt Examples}
+\label{app:prompts}
+
+The following are examples of the natural-language prompts used both for the LLM pipeline evaluations and the live benchmarks. Each group corresponds to one processing category in the pipeline.
+
+\paragraph{Message splitting (\texttt{splitMessage})}
+Single-task prompts are forwarded as-is; compound prompts are split into independent sub-tasks before routing.
+\begin{itemize}
+  \item \textit{``Go to tile (3, 4) to get +10 points''}
+  \item \textit{``What is 2 + 2?''}
+  \item \textit{``What is the current time in Tokyo?''}
+  \item \textit{``Go to tile (3,4) to get +10pts and tell me the current time in London''}
+  \item \textit{``Calculate 5*3 and tell me the time in Paris''}
+  \item \textit{``Where am I and what time is it in Rome?''}
+  \item \textit{``Go to (2,3) for +5pts, tell me the time in Berlin, and compute sqrt(16)''}
+  \item \textit{``Drop in leftmost tile for +5pts and avoid rightmost tile''}
+  \item \textit{``Deliver stacks of exactly 3 parcels at a time to double the reward''}
+  \item \textit{``Do not go through tile (5, 5) and deliver in (3, 4) for 5x pts''}
+  \item \textit{``Go to (3,4) for +5pts, calculate 10*2, tell me the time in NY, and where am I?''}
+\end{itemize}
+
+\paragraph{Tool / action extraction (\texttt{tools})}
+Maps a raw string to a known tool identifier; handles casing, whitespace, and partial matches.
+\begin{itemize}
+  \item \textit{``calculate''}
+  \item \textit{``get\_current\_time''}
+  \item \textit{``get\_my\_position''}
+  \item \textit{``generate\_desire''}
+  \item \textit{``common\_knowledge''}
+  \item \textit{``generate\_delivery\_constraint''}
+  \item \textit{``CALCULATE''} \quad (uppercase variant)
+  \item \textit{``Generate\_Desire''} \quad (mixed case)
+  \item \textit{``  calculate  ''} \quad (leading/trailing whitespace)
+  \item \textit{``GENERATE\_DELIVERY\_CONSTRAINT''}
+\end{itemize}
+
+\paragraph{City name extraction (\texttt{extractCityName})}
+\begin{itemize}
+  \item \textit{``What is the current time in London?''}
+  \item \textit{``Tell me the time in Paris''}
+  \item \textit{``What time is it in Tokyo?''}
+  \item \textit{``What is the time in New York?''}
+  \item \textit{``What is the current time in Sydney?''}
+  \item \textit{``I need to know the time in Moscow to schedule a call''}
+  \item \textit{``What time is it in NYC?''}
+  \item \textit{``Che ore sono a Milano?''} \quad (Italian)
+  \item \textit{``What is the time in Amsterdam (CET timezone)?''}
+  \item \textit{``Current time in Seoul please''}
+\end{itemize}
+
+\paragraph{Math expression extraction (\texttt{extractMathExpression})}
+\begin{itemize}
+  \item \textit{``What is 2 + 2?''}
+  \item \textit{``What is sqrt(144) + 3\^{}2?''}
+  \item \textit{``Compute 15 / 3''}
+  \item \textit{``Evaluate 3 + 4 * 2 - 1''}
+  \item \textit{``What is 2 * pi?''}
+  \item \textit{``Evaluate log(100, 10)''}
+  \item \textit{``What is floor(3.7)?''}
+  \item \textit{``Move to x=4*2 y=(1+3)*3''} \quad (embedded in navigation command)
+  \item \textit{``Calculate min(10, 20, 5)''}
+  \item \textit{``What is 10 \% 3?''}
+  \item \textit{``Compute sin(0)''}
+  \item \textit{``Calculate 1000 * 1000''}
+\end{itemize}
+
+\paragraph{Delivery tile constraint (\texttt{extractDeliveryConstraint})}
+\begin{itemize}
+  \item \textit{``Drop packages in leftmost tile to get +5 points''}
+  \item \textit{``Deliver to rightmost tile for +10 points''}
+  \item \textit{``Drop in topmost tile to earn 8 points''}
+  \item \textit{``You lose 5 points if you drop in the bottommost tile''}
+  \item \textit{``Never deliver to the topmost tile''}
+  \item \textit{``Avoid dropping in the leftmost tile''}
+  \item \textit{``The rightmost tile is forbidden for dropping''}
+  \item \textit{``Get +50 pts by dropping at leftmost''}
+  \item \textit{``Rightmost tile gives -8 pts penalty''}
+  \item \textit{``Consegna sulla casella più a sinistra per +5 punti''} \quad (Italian)
+\end{itemize}
+
+\paragraph{Stack constraint (\texttt{extractStackConstraint})}
+\begin{itemize}
+  \item \textit{``Deliver stacks of exactly 3 parcels at a time to double the reward''}
+  \item \textit{``Deliver stacks of exactly 5 parcels at a time to get 0.3 of the standard reward''}
+  \item \textit{``Delivering 4 or more parcels at once gives you 1.5x the reward''}
+  \item \textit{``Delivering at most 2 parcels cuts the reward in half''}
+  \item \textit{``Delivering exactly 1 parcel gives you no reward''}
+  \item \textit{``Delivering 2 or more parcels gives 1.2x the normal reward''}
+  \item \textit{``Exactly 5 parcels at once gives 0.3 of the standard reward''}
+  \item \textit{``Consegna esattamente 3 pacchi per ottenere il doppio del reward''} \quad (Italian)
+\end{itemize}
+
+\paragraph{Desire generation (\texttt{generateDesire})}
+Generates a BDI desire (go-to, avoidance, or delivery multiplier) from a spatial instruction.
+\begin{itemize}
+  \item \textit{``Go to tile (4, 5) for +10 pts''}
+  \item \textit{``Avoid tile (1, 1), penalty -20pts''}
+  \item \textit{``Do not go through tile (2, 3) otherwise you lose 50pts''}
+  \item \textit{``Tile (5, 5) costs you 50 points if you walk through it''}
+  \item \textit{``Steer clear of (7, 1) or you lose 50 points''}
+  \item \textit{``Every time you deliver in (3, 4) you get 5x pts''}
+  \item \textit{``Delivering at (0, 7) gives you 3x the normal reward''}
+  \item \textit{``Every time you deliver in (1, 2) you get 0 pts''}
+  \item \textit{``delivery tile 6,13 gives x0 points''}
+  \item \textit{``delivery tile 4,7 gives x0.5 points''}
+  \item \textit{``delivery tile 2,13 gives x200 of the reward''}
+  \item \textit{``delivering to tile (2, 8) gives you 0.3 of the standard reward''}
+  \item \textit{``deliverying in 2,13 gives triple the reward''}
+  \item \textit{``Vai alla casella (6, 2) per +15 punti''} \quad (Italian)
+  \item \textit{``Non passare per la casella (2, 2), perdi 50 punti''} \quad (Italian)
+\end{itemize}
+
+\paragraph{Plan task parsing (\texttt{plan\_tasks})}
+Resolves arithmetic expressions embedded in tile coordinates or reward values before execution.
+\begin{itemize}
+  \item \textit{``Go to tile (3, 4) to get some points''}
+  \item \textit{``Move to x=4*2 to get +10pts''}
+  \item \textit{``Move to x=4*2 y=(1+3)*3 to get +10pts''}
+  \item \textit{``Go to tile ((5+3)/2, 4)''}
+  \item \textit{``Move to x=sqrt(16) y=4''}
+  \item \textit{``Go to tile (floor(7.5), 3)''}
+  \item \textit{``Go to x=round(pi) y=5''}
+  \item \textit{``Move to x=abs(-3) y=ceil(2.1)''}
+  \item \textit{``Go to tile (2\^{}3, 2\^{}2)''}
+  \item \textit{``Vai a x=3*4 y=2 per +10 punti''} \quad (Italian)
+\end{itemize}
+
+\paragraph{Next action routing (\texttt{decideNextAction})}
+Routes an incoming message to the correct handler: math, time, position, desire, delivery constraint, stack constraint, or general knowledge.
+\begin{itemize}
+  \item \textit{``What is sqrt(144) + 3\^{}2?''} \quad (math)
+  \item \textit{``What is the current time in London?''} \quad (time)
+  \item \textit{``Where am I?''} \quad (position)
+  \item \textit{``Go to tile (3, 4) for +10 points''} \quad (desire)
+  \item \textit{``Avoid tile (9, 9) penalty -20pts''} \quad (desire / avoidance)
+  \item \textit{``Drop packages in the leftmost tile for +5 points''} \quad (delivery constraint)
+  \item \textit{``Deliver stacks of exactly 3 parcels at a time to double the reward''} \quad (stack constraint)
+  \item \textit{``delivery tile 2,13 gives x200 of the reward''} \quad (delivery multiplier)
+  \item \textit{``What is the capital of France?''} \quad (general knowledge)
+  \item \textit{``Who invented the telephone?''} \quad (general knowledge)
+  \item \textit{``Dove sono adesso?''} \quad (Italian — position)
+  \item \textit{``Vai alla casella (5, 3) per +10 punti''} \quad (Italian — desire)
+\end{itemize}
+
+\paragraph{Multi-agent commands (\texttt{extractMultiAgentCommand})}
+Covers stop/resume signals, row-based positioning, rendezvous coordination, and parcel handoff bonuses.
+\begin{itemize}
+  \item \textit{``Red light!''} \quad (stop all agents)
+  \item \textit{``Red light --- all agents stop on an odd row''}
+  \item \textit{``Red light --- stop on an even row''}
+  \item \textit{``Stop! All agents freeze immediately.''}
+  \item \textit{``All agents halt and hold position.''}
+  \item \textit{``Agents must stand still on an even row.''}
+  \item \textit{``All agents must move to an odd-numbered row and wait''}
+  \item \textit{``Green light.''} \quad (resume all agents)
+  \item \textit{``Green light, go!''}
+  \item \textit{``Resume moving.''}
+  \item \textit{``Continue your deliveries.''}
+  \item \textit{``Move both agents to the neighborhood of position (5,3) within a maximum distance of 3 and have them wait for each other. You will receive 500pts.''} \quad (rendezvous)
+  \item \textit{``Move both agents to the neighborhood of position 4,20 within a maximum distance of 3 and have them wait for each other''} \quad (rendezvous)
+  \item \textit{``If a parcel is initially picked up by one agent and later delivered by the other agent, you will receive a 200 points bonus.''} \quad (handoff)
+  \item \textit{``You get 500 extra points if one agent picks up a parcel and the partner delivers it.''} \quad (handoff)
+  \item \textit{``Pass the package to the other agent for a 50 pt reward.''} \quad (handoff)
+  \item \textit{``Relay the delivery! Have agent 1 transfer the box to agent 2.''} \quad (handoff)
+\end{itemize}
