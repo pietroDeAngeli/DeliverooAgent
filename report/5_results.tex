@@ -49,9 +49,7 @@ Table~\ref{tab:multi_agent_benchmark} reports the scores for the multi-agent sce
 \end{table}
 
 Both agents share the same underlying BDI architecture described in Section~\ref{sec:arch}; the LLM layer acts as an additional reasoning module on top of the reactive loop rather than a replacement. 
-The score differences across maps are primarily driven by the complexity of the natural language instructions provided to the agents: simpler prompts allow the BDI planner to operate with minimal LLM overhead, while more complex directives introduce latency and occasional misclassifications that reduce the effective score. 
-
-It is worth noting that the reported scores could be higher if the server infrastructure provided a dedicated mechanism for awarding points based on textual prompt interactions; however, such a system is not strictly required, as bonus points of this kind are left to the discretion of the administrator.
+The score differences across maps are primarily driven by the complexity of the natural language instructions provided to the agents: simpler prompts allow the BDI planner to operate with minimal LLM overhead, while more complex directives introduce latency and occasional misclassifications that reduce the effective score. The results of the prompts tested are not included on the score, as the current server infrastructure can't take them into account by rendering the admin's inputs. 
 
 \subsection{LLM Components Evaluation Results}
 \label{sec:llm_results}
