@@ -1,5 +1,4 @@
-\section{System Architecture}
-\label{sec:arch}
+\section{System Architecture}\label{sec:arch}
 
 \subsection{Overview}
 The system operates on a reactive sense-deliberate-act cycle, where each server-side sensing event drives a new iteration of the BDI loop.
@@ -8,8 +7,7 @@ Figure~\ref{fig:agent_architecture} sketches the high-level data flow.
 \begin{figure}[H]
     \centering
     \includegraphics[width=1\textwidth]{images/agent_architecture.png} 
-    \caption{Agent Architecture} 
-    \label{fig:agent_architecture}
+    \caption{Agent Architecture}\label{fig:agent_architecture}
 \end{figure}
 
 The system comprises three main subsystems:
@@ -64,8 +62,7 @@ The PDDL-based module leverages the \textit{Fast Downward} planner, configuring 
 Furthermore, the PDDL domain is designed to support crate manipulation in single-agent scenarios, enabling the agent to plan crate movements to navigate more complex environments. However, crate handling in cooperative multi-agent settings is not currently supported.
 
 
-\subsection{LLM Component}
-\label{sec:llm}
+\subsection{LLM Component}\label{sec:llm}
 
 The LLM component processes textual user inputs and extracts the structured information required to update the BDI agent's state. For this purpose, we selected the \textit{Llama-3.3-70B} model due to its advanced reasoning capabilities. To optimize performance and context window efficiency, we condition the model's short-term memory using concise system prompts paired with tailored \textit{few-shot examples} for each specific task.
 
