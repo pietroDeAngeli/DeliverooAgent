@@ -1,0 +1,9 @@
+map,agent1_name,agent1_score,agent1_penalty,agent1_net,agent2_name,agent2_score,agent2_penalty,agent2_net,duration_s,timestamp,status
+26c1_8,Neymar,1532,-12,1520,Mourinho,1687,-4,1683,300,2026-06-17 21:03:10
+26c1_6,Neymar,1697,-12,1685,Mourinho,1041,-14,1027,301,2026-06-17 21:15:22
+26c1_1,Mourinho,1262,-1,1261,Neymar,1069,-6,1063,300,2026-06-17 21:29:42
+26c1_2,Neymar,1098,-14,1084,Mourinho,1031,-70,961,300,2026-06-17 21:38:24
+26c1_3,Mourinho,614,-68,546,Neymar,614,-25,589,300,2026-06-17 21:46:09
+26c1_4,Mourinho,817,-19,798,Neymar,529,-22,507,300,2026-06-17 21:52:35
+26c1_5,Mourinho,530,-11,519,Neymar,401,-20,391,300,2026-06-17 21:28:12
+26c1_7,Neymar,1136,-7,1129,Mourinho,680,-4,676,300,2026-06-17 22:03:00

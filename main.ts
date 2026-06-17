@@ -78,8 +78,9 @@ let rendezvousPartnerArrived = false; // partner signalled its arrival
 let handoffRole: 'picker' | 'deliverer' | null = null;
 let handoffPhase: 'pickup' | 'approach' | 'idle' = 'idle';
 let handoffSlavePos: Position | null = null;   // slave's self-reported position for meeting point
-let handoffWaitStart: number | null = null;    // when picker started waiting for slave pos
-let handoffWaitAtMeetStart: number | null = null; // when slave arrived at meeting tile
+let handoffWaitStart: number | null = null;       // when picker started waiting for slave pos
+let handoffPickerAtMeetStart: number | null = null; // when picker arrived at meeting tile (waiting for deliverer)
+let handoffWaitAtMeetStart: number | null = null;   // when deliverer arrived at meeting tile
 let handoffDroppedIds = new Set<string>();        // parcel IDs dropped for handoff — blocked from picker re-pickup
 let handoffDroppedAt: number | null = null;       // timestamp when last handoff drop occurred
 let handoffExpectedParcelIds: Set<string> | null = null; // deliverer: IDs expected from HANDOFF_DROPPED
@@ -130,9 +131,9 @@ function computeMeetingPoint(posA: Position, posB: Position, blocked: Set<string
     // BFS from A through the master's known worldMap.
     const finderA = utils.bfsFlood(posA, worldMap.tiles, worldMap.crates, blocked);
 
-    // B's position may lie outside the master's explored area.
-    // Anchor B's BFS to the nearest walkable tile the master knows about so
-    // the bidirectional search always produces a real result.
+    // B may be standing on a non-walkable tile (delivery zone, obstacle).
+    // Anchor B's BFS to the nearest walkable tile so the bidirectional search
+    // always produces a real result.
     let startB: Position = posB;
     const pBtype = worldMap.tiles.get(`${posB.x},${posB.y}`);
     if (pBtype !== '0' && pBtype !== '1') {
@@ -230,8 +231,29 @@ function applyLLMUpdates(updates: LLMUpdate): void {
             rendezvousInRange = false;
             rendezvousPartnerArrived = false;
             const utility = cmd.points > 0 ? cmd.points : 9999;
-            llmPendingMissions.push(new Desire('rendezvous', cmd.x, cmd.y, utility));
-            console.log(`[Multi-agent] rendezvous at (${cmd.x},${cmd.y}) maxDist=${rendezvousMaxDist} pts=${utility}`);
+
+            // Master computes the optimal midpoint between the two agents and tells the slave.
+            // Both then navigate to the same computed meeting tile rather than the LLM-supplied
+            // coordinates (which might be suboptimal or only reachable by one agent quickly).
+            let meetX = cmd.x, meetY = cmd.y;
+            if (IS_MASTER && myAgent && worldMap && partnerAgentId) {
+                const partnerEntry = worldMap.other_agents.get(partnerAgentId);
+                if (partnerEntry) {
+                    const partnerPos = { x: Math.round(partnerEntry.pos.x), y: Math.round(partnerEntry.pos.y) };
+                    const now = Date.now();
+                    const blocked = new Set([
+                        ...[...tempBlockedCells.entries()].filter(([, u]) => u > now).map(([k]) => k),
+                        ...llmBlockedTiles,
+                    ]);
+                    const meet = computeMeetingPoint(myAgent.pos, partnerPos, blocked);
+                    if (meet) { meetX = meet.x; meetY = meet.y; }
+                }
+                socket.emitSay(partnerAgentId, JSON.stringify({ kind: 'RENDEZVOUS_TARGET', x: meetX, y: meetY }))
+                    .catch((err: unknown) => console.warn('[Rendezvous] Failed to send target to slave:', err));
+            }
+
+            llmPendingMissions.push(new Desire('rendezvous', meetX, meetY, utility));
+            console.log(`[Rendezvous] target=(${meetX},${meetY}) maxDist=${rendezvousMaxDist} pts=${utility}`);
         } else if (cmd.type === 'wait_row') {
             if (llmActiveMission?.type !== 'wait_row' && !llmPendingMissions.some(m => m.type === 'wait_row')) {
                 llmPendingMissions.push(new Desire('wait_row', 0, 0, 9999, cmd.parity));
@@ -471,6 +493,10 @@ socket.onMsg( async (id: string, name: string, msg: any, reply: ((response: any)
         if (id === partnerAgentId) {
             try {
                 const msgStr = typeof msg === 'string' ? msg : JSON.stringify(msg);
+                if (!msgStr.startsWith('{')) {
+                    debug(`[Multi-agent] Non-JSON peer message from ${name}, ignoring`);
+                    return;
+                }
                 const peerMsg = JSON.parse(msgStr);
                 debug(`[Multi-agent] Parsed peer message: ${JSON.stringify(peerMsg).substring(0, 100)}`);
                 
@@ -478,16 +504,23 @@ socket.onMsg( async (id: string, name: string, msg: any, reply: ((response: any)
                     console.log('[Multi-agent] Received LLM update from master, applying to BDI');
                     applyLLMUpdates(peerMsg.updates);
                 } else if (peerMsg.kind === 'RENDEZVOUS_ARRIVED') {
-                    console.log('[Multi-agent] Partner arrived at rendezvous point');
+                    console.log('[Rendezvous] Partner arrived at rendezvous tile');
                     rendezvousPartnerArrived = true;
-                    // If we're already in range waiting, complete now
-                    if (rendezvousInRange && llmActiveMission?.type === 'rendezvous') {
-                        console.log('[Rendezvous] Both agents in range, completing mission');
-                        completeActiveMission('rendezvous-both-arrived');
-                        clearIntention();
-                        rendezvousInRange = false;
-                        rendezvousPartnerArrived = false;
+                    // Completion is handled in the BDI loop (checks mutual distance on next tick)
+                } else if (peerMsg.kind === 'RENDEZVOUS_TARGET') {
+                    // Master computed the optimal meeting point — update our navigation target.
+                    const rx = Math.round(Number(peerMsg.x));
+                    const ry = Math.round(Number(peerMsg.y));
+                    const idx = llmPendingMissions.findIndex(m => m.type === 'rendezvous');
+                    if (idx >= 0) {
+                        const u = llmPendingMissions[idx].utility;
+                        llmPendingMissions[idx] = new Desire('rendezvous', rx, ry, u);
+                    } else if (llmActiveMission?.type === 'rendezvous') {
+                        llmActiveMission = new Desire('rendezvous', rx, ry, llmActiveMission.utility);
+                        currentIntention = llmActiveMission;
+                        currentPath = null;
                     }
+                    console.log(`[Rendezvous] Updated meeting point to (${rx},${ry})`);
                 } else if (peerMsg.kind === 'HANDOFF_SLAVE_POS') {
                     handoffSlavePos = { x: Math.round(Number(peerMsg.x)), y: Math.round(Number(peerMsg.y)) };
                     console.log(`[Handoff] Master: slave is at (${handoffSlavePos.x},${handoffSlavePos.y})`);
@@ -557,10 +590,10 @@ socket.onMsg( async (id: string, name: string, msg: any, reply: ((response: any)
 
         applyLLMUpdates(result.updates);
 
-        // Forward processed updates to slave BEFORE calling reply() to avoid socket state issues
+        // Forward processed updates (and any conversational reply) to slave BEFORE calling reply()
         if (partnerAgentId) {
             try {
-                await socket.emitSay(partnerAgentId, JSON.stringify({ kind: 'LLM_UPDATE', updates: result.updates }));
+                await socket.emitSay(partnerAgentId, JSON.stringify({ kind: 'LLM_UPDATE', updates: result.updates, reply: result.reply }));
                 console.log(`[Multi-agent] Forwarded LLM update to slave ${partnerAgentId}`);
             } catch (err) {
                 console.warn('[Multi-agent] Failed to forward update to slave:', err instanceof Error ? err.message : err);
@@ -608,6 +641,7 @@ async function bdiStep(): Promise<void> {
                     handoffRole = null;
                     handoffPhase = 'idle';
                     handoffWaitStart = null;
+                    handoffPickerAtMeetStart = null;
                 } else {
                     debug('[Handoff] Picker: parcel in hand, waiting for slave position...');
                 }
@@ -860,8 +894,9 @@ async function bdiStep(): Promise<void> {
             if (!currentPath?.length)
                 currentPath = await planPath(myAgent.pos, { x: currentIntention.x_target, y: currentIntention.y_target });
             if (!currentPath?.length) {
-                // Target may be in unexplored territory — step directionally so the worldMap expands.
-                await stepToward({ x: currentIntention.x_target, y: currentIntention.y_target });
+                const failed = currentIntention;
+                handleNoPath(`go_pickup:${currentIntention.x_target},${currentIntention.y_target}`, 'pickup');
+                if (sameMission(failed, llmActiveMission)) completeActiveMission('no-path');
                 return;
             }
             await stepTowards(currentPath[0], utils.nextPosition(myAgent.pos, currentPath[0]));
@@ -923,38 +958,53 @@ async function bdiStep(): Promise<void> {
             await stepTowards(currentPath[0], utils.nextPosition(myAgent.pos, currentPath[0]));
 
         } else if (currentIntention.type === 'rendezvous') {
-            const dist = utils.get_distance(myAgent.pos, { x: currentIntention.x_target, y: currentIntention.y_target });
-            if (dist <= rendezvousMaxDist) {
+            const target = { x: currentIntention.x_target, y: currentIntention.y_target };
+            const distToTarget = utils.get_distance(myAgent.pos, target);
+
+            // Mutual distance to partner (agent-to-agent), which is the actual rendezvous condition.
+            const partnerEntry = partnerAgentId ? worldMap.other_agents.get(partnerAgentId) : null;
+            const distToPartner = partnerEntry
+                ? Math.abs(myAgent.pos.x - Math.round(partnerEntry.pos.x)) + Math.abs(myAgent.pos.y - Math.round(partnerEntry.pos.y))
+                : Infinity;
+
+            // Arrive when on the tile or immediately adjacent (nav target reached).
+            if (distToTarget <= 1) {
                 if (!rendezvousInRange) {
                     rendezvousInRange = true;
-                    console.log(`[Rendezvous] In range at (${myAgent.pos.x},${myAgent.pos.y}), dist=${dist}, signaling partner`);
+                    console.log(`[Rendezvous] At tile (${myAgent.pos.x},${myAgent.pos.y}), signaling partner`);
                     if (partnerAgentId) {
                         socket.emitSay(partnerAgentId, JSON.stringify({ kind: 'RENDEZVOUS_ARRIVED' }))
                             .catch((err: unknown) => console.warn('[Rendezvous] Failed to signal partner:', err));
                     } else {
-                        // No partner - complete immediately
                         rendezvousPartnerArrived = true;
                     }
                 }
                 if (rendezvousPartnerArrived) {
-                    console.log(`[Rendezvous] Both agents in range, completing mission`);
-                    if (sameMission(currentIntention, llmActiveMission)) completeActiveMission('rendezvous-both-arrived');
-                    clearIntention();
-                    rendezvousInRange = false;
-                    rendezvousPartnerArrived = false;
-                    return;
+                    // Both signaled they're at the tile. Complete when mutual distance ≤ maxDist,
+                    // or when the partner is not visible (they're near the same tile — close enough).
+                    const mutuallyClose = distToPartner <= rendezvousMaxDist || distToPartner === Infinity;
+                    if (mutuallyClose) {
+                        const actualDist = distToPartner === Infinity ? '?' : distToPartner;
+                        console.log(`[Rendezvous] Both at tile, mutual dist=${actualDist} (max=${rendezvousMaxDist}), completing`);
+                        if (sameMission(currentIntention, llmActiveMission)) completeActiveMission('rendezvous-both-arrived');
+                        clearIntention();
+                        rendezvousInRange = false;
+                        rendezvousPartnerArrived = false;
+                        return;
+                    }
+                    // Partner signaled but is still too far — keep holding, they're still approaching.
+                    debug(`[Rendezvous] Partner signaled but mutual dist=${distToPartner} > max=${rendezvousMaxDist}, holding`);
                 }
-                // Waiting for partner — hold position
-                debug(`[Rendezvous] Holding at (${myAgent.pos.x},${myAgent.pos.y}), waiting for partner`);
+                // Holding at tile, waiting for partner signal or proximity
+                debug(`[Rendezvous] Holding at (${myAgent.pos.x},${myAgent.pos.y}), partnerArrived=${rendezvousPartnerArrived}`);
                 return;
             }
             if (!currentPath?.length)
                 currentPath = await planPath(myAgent.pos, { x: currentIntention.x_target, y: currentIntention.y_target });
             if (!currentPath?.length) {
-                const failed = currentIntention;
-                handleNoPath(`rendezvous:${currentIntention.x_target},${currentIntention.y_target}`, 'rendezvous target');
-                if (sameMission(failed, llmActiveMission)) completeActiveMission('no-path');
-                rendezvousInRange = false;
+                // Target tile not yet discovered — walk blindly toward it rather than giving up.
+                debug(`[Rendezvous] No BFS path to (${target.x},${target.y}), stepping toward unknown tile`);
+                await stepToward(target);
                 return;
             }
             await stepTowards(currentPath[0], utils.nextPosition(myAgent.pos, currentPath[0]));
@@ -992,22 +1042,39 @@ async function bdiStep(): Promise<void> {
 
             // 1. ARRIVAL & DROP CHECK
             const dropKey = `${myPos.x},${myPos.y}`;
-
             const isValidDropTile = currentTileType === '0' || currentTileType === '1';
-            // Drop when AT the meeting point OR when standing adjacent to the deliverer (handles
-            // the case where the deliverer is blocking the exact meeting tile).
+            const delivererIsClose = distToDeliverer <= 2;
+
+            // At meeting tile: wait for deliverer to arrive before dropping so the parcel
+            // isn't left exposed on the ground. Allow a 20 s timeout after which we drop
+            // anyway (deliverer may be stuck or taking a long route).
+            if (distToMeet === 0 && !delivererIsClose && isValidDropTile) {
+                if (!handoffPickerAtMeetStart) {
+                    handoffPickerAtMeetStart = Date.now();
+                    console.log(`[Handoff] Picker: at meeting point (${myPos.x},${myPos.y}), waiting for deliverer (dist=${distToDeliverer})…`);
+                }
+                if (Date.now() - handoffPickerAtMeetStart < 20_000) {
+                    return; // stay put, next tick will re-check
+                }
+                console.log(`[Handoff] Picker: deliverer timeout — dropping at (${myPos.x},${myPos.y}) anyway`);
+            }
+            handoffPickerAtMeetStart = null;
+
+            // Drop when AT the meeting point (after deliverer is close or timeout) OR
+            // when standing adjacent to the deliverer (handles the case where the
+            // deliverer is blocking the exact meeting tile).
             const canTryDrop = (distToMeet === 0 || distToDeliverer <= 1) && isValidDropTile && !tempBlockedCells.has(`cursed_${dropKey}`);
 
             if (canTryDrop) {
                 const res = await socket.emitPutdown();
-                
+
                 if (Array.isArray(res) && res.length > 0) {
                     console.log(`[Handoff] Picker: successfully dropped at (${myPos.x},${myPos.y})`);
                     carrying = carrying.filter(c => !res.some((dropped: any) => dropped.id === c.id));
                     for (const dropped of res) handoffDroppedIds.add(dropped.id);
                     handoffDroppedAt = Date.now();
                     console.log(`[Handoff] Picker: blocking re-pickup of IDs: ${res.map((d: any) => d.id).join(', ')}`);
-                    
+
                     if (partnerAgentId) {
                         socket.emitSay(partnerAgentId, JSON.stringify({
                             kind: 'HANDOFF_DROPPED', x: myPos.x, y: myPos.y, parcels: res
@@ -1019,12 +1086,12 @@ async function bdiStep(): Promise<void> {
                     completeActiveMission('handoff-dropped');
                     clearIntention();
 
-                    tempBlockedCells.set(dropKey, Date.now() + 10000); 
+                    tempBlockedCells.set(dropKey, Date.now() + 10000);
                     return;
                 } else {
                     console.log(`[Handoff] Picker: Server REJECTED drop at (${myPos.x},${myPos.y}). Searching for alternate.`);
                     tempBlockedCells.set(`cursed_${dropKey}`, Date.now() + 60000);
-                    currentPath = null; 
+                    currentPath = null;
                 }
             }
 
@@ -1085,9 +1152,12 @@ async function bdiStep(): Promise<void> {
             if (!currentPath?.length)
                 currentPath = await planPath(myAgent.pos, meetPos);
             if (!currentPath?.length) {
-                // Meeting point outside known map — step directionally so the worldMap expands.
-                console.log(`[Handoff] Deliverer: no known path to (${meetPos.x},${meetPos.y}), stepping toward it`);
-                await stepToward(meetPos);
+                console.log(`[Handoff] Deliverer: no path to meeting point (${meetPos.x},${meetPos.y}), aborting handoff`);
+                handoffRole = null;
+                handoffPhase = 'idle';
+                handoffWaitAtMeetStart = null;
+                completeActiveMission('no-path');
+                clearIntention();
                 return;
             }
             await stepTowards(currentPath[0], utils.nextPosition(myAgent.pos, currentPath[0]));
@@ -1138,6 +1208,7 @@ async function bdiStep(): Promise<void> {
                             }
                             carrying.length = 0;
                             handoffRole = null;
+                            handoffPickerAtMeetStart = null;
                             handoffPhase = 'idle';
                         }
                         completeActiveMission('stuck');

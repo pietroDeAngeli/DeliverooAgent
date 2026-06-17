@@ -284,11 +284,24 @@ export class LLMClient {
                     if (desire.action === "avoid") {
                         updates.blockedTiles.push(`${desire.x},${desire.y}`);
                     } else if (desire.action === "go_to") {
-                        updates.goToTiles.push({ x: desire.x, y: desire.y, utility: desire.points });
+                        if (desire.points > 0) {
+                            updates.goToTiles.push({ x: desire.x, y: desire.y, utility: desire.points });
+                        } else {
+                            console.warn(`[LLM] go_to at (${desire.x},${desire.y}) has non-positive points=${desire.points}, treating as block`);
+                            updates.blockedTiles.push(`${desire.x},${desire.y}`);
+                        }
                     } else if (desire.action === "go_delivery") {
                         const key = `${desire.x},${desire.y}`;
-                        updates.blockedDeliveryTiles = updates.blockedDeliveryTiles.filter(k => k !== key);
-                        updates.deliveryBonusTiles.push({ x: desire.x, y: desire.y, multiplier: desire.multiplier ?? 1 });
+                        const mult = desire.multiplier ?? 1;
+                        if (mult <= 0) {
+                            // multiplier ≤ 0 means avoid — consistent with prompt rule: multiplier < 1 → avoid_delivery
+                            console.warn(`[LLM] go_delivery at (${key}) has multiplier=${mult}, routing to avoid_delivery`);
+                            updates.deliveryBonusTiles = updates.deliveryBonusTiles.filter(b => `${b.x},${b.y}` !== key);
+                            updates.blockedDeliveryTiles.push(key);
+                        } else {
+                            updates.blockedDeliveryTiles = updates.blockedDeliveryTiles.filter(k => k !== key);
+                            updates.deliveryBonusTiles.push({ x: desire.x, y: desire.y, multiplier: mult });
+                        }
                     } else if (desire.action === "avoid_delivery") {
                         const key = `${desire.x},${desire.y}`;
                         updates.deliveryBonusTiles = updates.deliveryBonusTiles.filter(b => `${b.x},${b.y}` !== key);
@@ -307,6 +320,10 @@ export class LLMClient {
             } else if (action === "generate_stack_constraint") {
                 const constraint = await this.extractStackConstraint(subMsg);
                 if (constraint) {
+                    if (constraint.multiplier < 0) {
+                        console.warn(`[LLM] stackConstraint has negative multiplier=${constraint.multiplier}, clamping to 0`);
+                        constraint.multiplier = 0;
+                    }
                     updates.stackConstraints.push(constraint);
                 }
             } else if (action === "multi_agent_command") {
