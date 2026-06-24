@@ -1,5 +1,42 @@
 # Deliveroo Agent
 
+This project contains an implementation of autonomous agents in the Deliveroo.js environment.
+
+The goals of the project are to implement:
+- **BDI** module to navigate, pick up, and deliver parcels
+- **PDDL** module for planning (used for pathfinding)
+- **LLM interface** to handle natural language requests
+
+The BDI agent should be able to pick up, deliver, and explore the map.
+The LLM module should be able to complete 3 levels of tasks:
+- **Atomic**: simple tasks
+- **Strategy update**: queries that require the agent to adapt its strategy according to the natural language query
+- **Coordination**: more complex tasks that require coordination between two agents to be satisfied
+
+![Agent PDDL planning](./report/gifs/PDDL_Crates.gif)
+
+## Project structure
+
+```
+Agent/
+├── main.ts                     # entry point: socket wiring + BDI control loop
+├── utils.ts                    # shared helpers (distances, paths, mission helpers)
+├── path_finding.ts             # BFS flood-fill path finder
+├── BDI/                        # belief / desire / intention model
+│   ├── Belief.ts
+│   ├── Desire.ts
+│   └── Intentions.ts
+├── communication/              # multi-agent protocol (master ⇄ slave messaging)
+│   └── multiagent.ts           # peer messages, LLM updates, rendezvous/handoff
+├── pddl/                       # PDDL planning
+│   ├── pddl_planner.ts         # Fast Downward driver (with BFS fallback)
+│   └── deliveroo-domain.pddl   # planning domain
+├── LLM/                        # optional LLM reasoning layer
+├── RL/                         # experimental reinforcement-learning agent
+├── lib/downward/               # Fast Downward solver (git submodule)
+├── tests/                      # LLM unit tests
+└── scripts/setup.js            # submodule init + Fast Downward build
+```
 
 ## Installation
 You need to connect to a Deliveroo server. If you want to run it locally move to the next section, otherwise skip it.
