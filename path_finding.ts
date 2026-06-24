@@ -61,7 +61,6 @@ export function bfsFlood(
 
     const queue: QueueNode[] = [{ x: start.x, y: start.y }];
     const cratePositions = new Set([...crates.values()].map(c => `${c.pos.x},${c.pos.y}`));
-    const blocked = new Set([...cratePositions, ...extraBlocked]);
 
     while (queue.length > 0) {
         const { x, y } = queue.shift()!;
@@ -77,10 +76,28 @@ export function bfsFlood(
             const ny = y + dir.y;
             const key = `${nx},${ny}`;
             const nextTileType = tiles.get(key);
-            if (nextTileType !== undefined && nextTileType !== '0' && !parentMap.has(key) && !blocked.has(key)) {
-                parentMap.set(key, { parentKey: currentKey, dir: dir.name, depth: currentDepth + 1 });
-                queue.push({ x: nx, y: ny });
+
+            // Basic passability: tile must exist, not be a wall, not already
+            // reached, and not externally blocked.
+            if (nextTileType === undefined || nextTileType === '0'
+                || parentMap.has(key) || extraBlocked.has(key)) {
+                continue;
             }
+
+            // A crate on the next tile can be traversed only by pushing it one
+            // tile further in the same direction; the landing tile must be a
+            // free type-5 tile (server rule, see PushAgent.js). The resulting
+            // step is an ordinary move in `dir` — the server performs the push.
+            if (cratePositions.has(key)) {
+                const bKey = `${nx + dir.x},${ny + dir.y}`;
+                const beyondType = tiles.get(bKey);
+                const pushable = beyondType !== undefined && beyondType.startsWith('5')
+                    && !cratePositions.has(bKey) && !extraBlocked.has(bKey);
+                if (!pushable) continue;
+            }
+
+            parentMap.set(key, { parentKey: currentKey, dir: dir.name, depth: currentDepth + 1 });
+            queue.push({ x: nx, y: ny });
         }
     }
 

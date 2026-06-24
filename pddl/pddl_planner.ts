@@ -4,7 +4,7 @@
  * Drop-in async replacement for BFS path finding using Fast Downward (local solver).
  * Writes domain + problem PDDL to disk, runs fast-downward.py, and parses the plan.
  *
- * Requires Fast Downward to be built under lib/downward/.
+ * Requires Fast Downward to be built under lib/downward/ (repository root).
  * Override the Python executable via the PYTHON_CMD env var (default: 'python3').
  */
 
@@ -13,10 +13,13 @@ import { writeFileSync, readFileSync, existsSync, unlinkSync, mkdirSync } from '
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
-import type { Position, World, Crate } from './BDI/Belief.ts';
+import type { Position, World, Crate } from '../BDI/Belief.ts';
 
+// This module lives in <root>/pddl, so __dirname IS the PDDL working directory
+// and the repository root is one level up.
 const __dirname   = dirname(fileURLToPath(import.meta.url));
-const PDDL_DIR    = join(__dirname, 'pddl');
+const PDDL_DIR    = __dirname;
+const ROOT_DIR    = join(__dirname, '..');
 
 // Each process gets its own subdirectory so concurrent agents don't overwrite
 // each other's problem file, plan file, or Fast Downward's output.sas.
@@ -29,8 +32,8 @@ const PROBLEM_FILE = join(INSTANCE_DIR, 'deliveroo-problem.pddl');
 const PLAN_FILE    = join(INSTANCE_DIR, 'deliveroo-plan');
 
 // Absolute paths for the shell command to avoid cwd-related resolution issues
-const DOWNWARD_PATH = join(__dirname, 'lib', 'downward', 'fast-downward.py');
-const DOMAIN_PATH   = join(PDDL_DIR, 'deliveroo-domain.pddl');
+const DOWNWARD_PATH = join(ROOT_DIR, 'lib', 'downward', 'fast-downward.py');
+const DOMAIN_PATH   = DOMAIN_FILE;
 // PROBLEM_PATH and PLAN_PATH are instance-specific and set in getPddlPath()
 const PYTHON_CMD    = process.env.PYTHON_CMD ?? 'python3';
 
@@ -107,8 +110,8 @@ export async function getPddlPath(
         // (clear t) — true when no crate occupies the tile
         if (!crateSet.has(key)) initFacts.push(`(clear ${id})`);
 
-        // (type5 t) — tile accepts pushed crates
-        if (type === '5') initFacts.push(`(type5 ${id})`);
+        // (type5 t) — tile accepts pushed crates (server rule: type.startsWith("5"))
+        if (type.startsWith('5')) initFacts.push(`(type5 ${id})`);
 
         for (const { dx, dy, rel } of DIRS) {
             if (allowedExit && allowedExit !== rel) continue;
@@ -150,17 +153,23 @@ export async function getPddlPath(
     if (existsSync(PLAN_FILE)) { try { unlinkSync(PLAN_FILE); } catch {} }
 
     // ── Run Fast Downward ─────────────────────────────────────────────────────
-    // Use absolute paths to avoid cwd-related issues. Fast Downward writes to fixed 
+    // Use absolute paths to avoid cwd-related issues. Fast Downward writes to fixed
     // paths (output.sas, deliveroo-plan) relative to where it runs, so this must be
     // the instance directory. However, passing absolute paths is more reliable.
     const cmd = `${PYTHON_CMD} "${DOWNWARD_PATH}" --plan-file "${PLAN_FILE}" "${DOMAIN_PATH}" "${PROBLEM_FILE}" --search "astar(lmcut())"`;
 
     await new Promise<void>(resolve => {
         exec(cmd, { timeout: 15_000, cwd: INSTANCE_DIR }, (err, _stdout, stderr) => {
-            // Fast Downward exits 0 = plan found, 11 = unsolvable, 12 = OOM, others = crash.
-            // We check the plan file instead of the exit code to handle all cases uniformly.
-            if (err && !existsSync(PLAN_FILE)) {
-                const detail = stderr?.trim().split('\n').slice(-5).join(' | ') ?? err.message;
+            // Fast Downward exit codes: 0 = plan found, 11 = proved unsolvable,
+            // 12 = search space exhausted (no solution). 11/12 are *normal* "no
+            // path" outcomes — e.g. the goal tile is walled off by crates that
+            // cannot be pushed clear — not solver failures, so don't warn.
+            if (existsSync(PLAN_FILE)) { resolve(); return; }
+            const code = (err as any)?.code;   // number (exit code) or string (spawn error, e.g. 'ENOENT')
+            if (code === 11 || code === 12) {
+                // unreachable goal: caller falls back to BFS / picks another target
+            } else if (err) {
+                const detail = stderr?.trim().split('\n').slice(-5).join(' | ') || err.message || `exit ${code}`;
                 console.warn('[PDDL] Solver error:', detail);
             }
             resolve();

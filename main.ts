@@ -7,8 +7,14 @@ import { Desire, generateDesires, effectiveDeliveryMultiplier } from "./BDI/Desi
 import type { StackConstraint } from "./BDI/Desire.ts";
 import { reviseIntention } from "./BDI/Intentions.ts";
 import * as utils from "./utils.ts";
-import { getPddlPath } from "./pddl_planner.ts";
-import type { LLMClient, LLMUpdate } from "./LLM/llm.ts";
+import { sameMission, missionKey } from "./utils.ts";
+import { getPddlPath } from "./pddl/pddl_planner.ts";
+import type { LLMClient } from "./LLM/llm.ts";
+import {
+    computeMeetingPoint,
+    handleMessage,
+    type CommsContext,
+} from "./communication/multiagent.ts";
 
 dotenv.config();
 
@@ -93,17 +99,6 @@ function clearIntention(): void {
     currentPath      = null;
 }
 
-function sameMission(a: Desire | null, b: Desire | null): boolean {
-    return !!a && !!b &&
-        a.type === b.type &&
-        a.x_target === b.x_target &&
-        a.y_target === b.y_target;
-}
-
-function missionKey(mission: Desire): string {
-    return `${mission.type}:${mission.x_target},${mission.y_target}`;
-}
-
 function completeActiveMission(reason: string): void {
     if (!llmActiveMission) return;
     console.log(`[LLM] Atomic mission completed (${reason}): ${missionKey(llmActiveMission)}`);
@@ -124,171 +119,52 @@ if (USE_LLM_EFFECTIVE) {
     })();
 }
 
-
-function computeMeetingPoint(posA: Position, posB: Position, blocked: Set<string>): Position | null {
-    if (!worldMap) return null;
-
-    // BFS from A through the master's known worldMap.
-    const finderA = utils.bfsFlood(posA, worldMap.tiles, worldMap.crates, blocked);
-
-    // B may be standing on a non-walkable tile (delivery zone, obstacle).
-    // Anchor B's BFS to the nearest walkable tile so the bidirectional search
-    // always produces a real result.
-    let startB: Position = posB;
-    const pBtype = worldMap.tiles.get(`${posB.x},${posB.y}`);
-    if (pBtype !== '0' && pBtype !== '1') {
-        let bestDist = Infinity;
-        for (const key of worldMap.tiles.keys()) {
-            const t = worldMap.tiles.get(key);
-            if (t !== '0' && t !== '1') continue;
-            const [x, y] = key.split(',').map(Number);
-            const d = Math.abs(x - posB.x) + Math.abs(y - posB.y);
-            if (d < bestDist) { bestDist = d; startB = { x, y }; }
-        }
-    }
-    const finderB = utils.bfsFlood(startB, worldMap.tiles, worldMap.crates, blocked);
-
-    // Bidirectional meeting point: minimise max(dA, dB) so both agents travel
-    // roughly the same distance. Tiebreak with dA+dB. Neither agent's own tile.
-    let best: Position | null = null;
-    let bestMax = Infinity;
-    let bestSum = Infinity;
-
-    for (const key of worldMap.tiles.keys()) {
-        const tileType = worldMap.tiles.get(key);
-        if (tileType !== '0' && tileType !== '1') continue;
-        const [x, y] = key.split(',').map(Number);
-        const dA = finderA.getDistance({ x, y });
-        const dB = finderB.getDistance({ x, y });
-        if (dA === Infinity || dB === Infinity || dA === 0 || dB === 0) continue;
-        const mx = Math.max(dA, dB);
-        const sm = dA + dB;
-        if (mx < bestMax || (mx === bestMax && sm < bestSum)) {
-            bestMax = mx; bestSum = sm; best = { x, y };
-        }
-    }
-    return best;
-}
-
-function findDirectionalDeliveryTile(direction: string): { x: number; y: number } | null {
-    if (!worldMap) return null;
-    const tiles = [...worldMap.tiles.entries()]
-        .filter(([, t]) => t === '2')
-        .map(([key]) => { const [x, y] = key.split(',').map(Number); return { x, y }; });
-    if (tiles.length === 0) return null;
-    switch (direction) {
-        case 'leftmost':  return tiles.reduce((a, b) => a.x < b.x ? a : b);
-        case 'rightmost': return tiles.reduce((a, b) => a.x > b.x ? a : b);
-        case 'topmost':   return tiles.reduce((a, b) => a.y < b.y ? a : b);
-        case 'bottommost':return tiles.reduce((a, b) => a.y > b.y ? a : b);
-        default: return null;
-    }
-}
-
-function applyLLMUpdates(updates: LLMUpdate): void {
-    for (const tile of updates.goToTiles) {
-        console.log(`[LLM] new go_to mission: (${tile.x},${tile.y}) u=${tile.utility}`);
-        llmPendingMissions.push(new Desire("go_to", tile.x, tile.y, tile.utility));
-    }
-    for (const tileKey of updates.blockedTiles) {
-        console.log(`[LLM] blocking tile: ${tileKey}`);
-        llmBlockedTiles.add(tileKey);
-    }
-    for (const bonus of updates.deliveryBonusTiles) {
-        const key = `${bonus.x},${bonus.y}`;
-        llmDeliveryBonusTiles.set(key, bonus.multiplier);
-        console.log(`[LLM] delivery bonus: (${bonus.x},${bonus.y}) x${bonus.multiplier}`);
-    }
-    for (const key of updates.blockedDeliveryTiles) {
-        llmBlockedDeliveryTiles.add(key);
-        console.log(`[LLM] blocked delivery tile: ${key}`);
-    }
-    for (const constraint of updates.deliveryConstraints) {
-        const tile = findDirectionalDeliveryTile(constraint.direction);
-        if (!tile) { console.log(`[LLM] delivery constraint: tile ${constraint.direction} not found`); continue; }
-        if (constraint.points < 0) {
-            console.log(`[LLM] blocking delivery tile (${tile.x},${tile.y}) dir=${constraint.direction}`);
-            llmBlockedTiles.add(`${tile.x},${tile.y}`);
-        } else {
-            console.log(`[LLM] new go_delivery mission: (${tile.x},${tile.y}) dir=${constraint.direction} pts=${constraint.points}`);
-            llmPendingMissions.push(new Desire("go_delivery", tile.x, tile.y, constraint.points));
-        }
-    }
-    for (const constraint of updates.stackConstraints) {
-        const op = constraint.operator as StackConstraint['operator'];
-        const mode = (constraint.mode ?? 'count') as StackConstraint['mode'];
-        const existing = llmStackConstraints.findIndex(c => c.count === constraint.count && c.operator === op && (c.mode ?? 'count') === mode);
-        const entry: StackConstraint = { count: constraint.count, operator: op, multiplier: constraint.multiplier, mode };
-        if (existing >= 0) llmStackConstraints[existing] = entry;
-        else llmStackConstraints.push(entry);
-        const label = mode === 'score' ? 'score' : 'parcels';
-        console.log(`[LLM] stack constraint: ${op} ${constraint.count} ${label} → x${constraint.multiplier}`);
-    }
-    if (updates.multiAgentCommand) {
-        const cmd = updates.multiAgentCommand;
-        if (cmd.type === 'rendezvous') {
-            rendezvousMaxDist = cmd.maxDist;
-            rendezvousInRange = false;
-            rendezvousPartnerArrived = false;
-            const utility = cmd.points > 0 ? cmd.points : 9999;
-
-            // Master computes the optimal midpoint between the two agents and tells the slave.
-            // Both then navigate to the same computed meeting tile rather than the LLM-supplied
-            // coordinates (which might be suboptimal or only reachable by one agent quickly).
-            let meetX = cmd.x, meetY = cmd.y;
-            if (IS_MASTER && myAgent && worldMap && partnerAgentId) {
-                const partnerEntry = worldMap.other_agents.get(partnerAgentId);
-                if (partnerEntry) {
-                    const partnerPos = { x: Math.round(partnerEntry.pos.x), y: Math.round(partnerEntry.pos.y) };
-                    const now = Date.now();
-                    const blocked = new Set([
-                        ...[...tempBlockedCells.entries()].filter(([, u]) => u > now).map(([k]) => k),
-                        ...llmBlockedTiles,
-                    ]);
-                    const meet = computeMeetingPoint(myAgent.pos, partnerPos, blocked);
-                    if (meet) { meetX = meet.x; meetY = meet.y; }
-                }
-                socket.emitSay(partnerAgentId, JSON.stringify({ kind: 'RENDEZVOUS_TARGET', x: meetX, y: meetY }))
-                    .catch((err: unknown) => console.warn('[Rendezvous] Failed to send target to slave:', err));
-            }
-
-            llmPendingMissions.push(new Desire('rendezvous', meetX, meetY, utility));
-            console.log(`[Rendezvous] target=(${meetX},${meetY}) maxDist=${rendezvousMaxDist} pts=${utility}`);
-        } else if (cmd.type === 'wait_row') {
-            if (llmActiveMission?.type !== 'wait_row' && !llmPendingMissions.some(m => m.type === 'wait_row')) {
-                llmPendingMissions.push(new Desire('wait_row', 0, 0, 9999, cmd.parity));
-                console.log(`[Multi-agent] wait_row (${cmd.parity}) queued`);
-            }
-        } else if (cmd.type === 'resume') {
-            if (llmActiveMission?.type === 'wait_row') {
-                llmActiveMission = null;
-                clearIntention();
-                console.log('[Multi-agent] resume: cleared wait_row mission');
-            }
-            const idx = llmPendingMissions.findIndex(m => m.type === 'wait_row');
-            if (idx >= 0) llmPendingMissions.splice(idx, 1);
-        } else if (cmd.type === 'parcel_handoff') {
-            const utility = cmd.points > 0 ? cmd.points : 9999;
-            if (IS_MASTER) {
-                handoffRole = 'picker';
-                handoffPhase = 'pickup';
-                handoffSlavePos = null;
-                handoffWaitStart = null;
-                console.log(`[Handoff] Role: picker — normal BDI will acquire parcel, then meet slave (pts=${utility})`);
-            } else {
-                handoffRole = 'deliverer';
-                handoffPhase = 'idle';
-                console.log('[Handoff] Role: deliverer — waiting for picker signal');
-                // Report our position to the picker so it can compute the meeting point
-                if (partnerAgentId && myAgent) {
-                    socket.emitSay(partnerAgentId, JSON.stringify({
-                        kind: 'HANDOFF_SLAVE_POS', x: myAgent.pos.x, y: myAgent.pos.y,
-                    })).catch((err: unknown) => console.warn('[Handoff] Failed to report position:', err));
-                }
-            }
-        }
-    }
-}
+// Shared view of the agent state handed to the communication layer. Getters/setters
+// are bound to the module-level BDI/LLM/multi-agent state above so the comms module
+// can read and update it without owning any of it.
+const commsCtx: CommsContext = {
+    socket,
+    IS_MASTER,
+    godName,
+    get useLLM() { return useLLM; },
+    get llm() { return llm; },
+    get worldMap() { return worldMap; },
+    get myAgent() { return myAgent; },
+    get partnerAgentId() { return partnerAgentId; },
+    set partnerAgentId(v) { partnerAgentId = v; },
+    get llmActiveMission() { return llmActiveMission; },
+    set llmActiveMission(v) { llmActiveMission = v; },
+    get currentIntention() { return currentIntention; },
+    set currentIntention(v) { currentIntention = v; },
+    get currentPath() { return currentPath; },
+    set currentPath(v) { currentPath = v; },
+    get rendezvousMaxDist() { return rendezvousMaxDist; },
+    set rendezvousMaxDist(v) { rendezvousMaxDist = v; },
+    get rendezvousInRange() { return rendezvousInRange; },
+    set rendezvousInRange(v) { rendezvousInRange = v; },
+    get rendezvousPartnerArrived() { return rendezvousPartnerArrived; },
+    set rendezvousPartnerArrived(v) { rendezvousPartnerArrived = v; },
+    get handoffRole() { return handoffRole; },
+    set handoffRole(v) { handoffRole = v; },
+    get handoffPhase() { return handoffPhase; },
+    set handoffPhase(v) { handoffPhase = v; },
+    get handoffSlavePos() { return handoffSlavePos; },
+    set handoffSlavePos(v) { handoffSlavePos = v; },
+    get handoffWaitStart() { return handoffWaitStart; },
+    set handoffWaitStart(v) { handoffWaitStart = v; },
+    get handoffWaitAtMeetStart() { return handoffWaitAtMeetStart; },
+    set handoffWaitAtMeetStart(v) { handoffWaitAtMeetStart = v; },
+    get handoffExpectedParcelIds() { return handoffExpectedParcelIds; },
+    set handoffExpectedParcelIds(v) { handoffExpectedParcelIds = v; },
+    tempBlockedCells,
+    llmBlockedTiles,
+    llmPendingMissions,
+    llmDeliveryBonusTiles,
+    llmBlockedDeliveryTiles,
+    llmStackConstraints,
+    debug,
+    clearIntention,
+};
 
 function handleNoPath(key: string, label: string): void {
     const ticks = (intentionStuckTicks.get(key) ?? 0) + 1;
@@ -309,33 +185,38 @@ async function planPath(start: Position, target: Position): Promise<string[] | n
     const now     = Date.now();
     const blocked = new Set([...tempBlockedCells.entries()].filter(([, u]) => u > now).map(([k]) => k));
 
-    // Return BFS path immediately so the agent is never frozen while the PDDL
-    // subprocess starts up. PDDL runs in the background; when it resolves it
-    // replaces currentPath only if the agent hasn't moved yet (same start tile)
-    // and is still pursuing the same intention target.
     const bfsPath = utils.get_shortest_path(start, target, worldMap, blocked);
 
-    if (USE_PDDL) {
-        const capturedType = currentIntention?.type;
-        const capturedTx   = target.x;
-        const capturedTy   = target.y;
-        const wm = worldMap;
-        const bl = new Set(blocked);
-        debug(`[PDDL] ${start.x},${start.y} -> ${target.x},${target.y}`);
-        getPddlPath(start, target, wm, bl).then(pddlPath => {
-            if (!pddlPath || isRunning) return;
-            const sameTarget =
-                currentIntention?.type     === capturedType &&
-                currentIntention?.x_target === capturedTx   &&
-                currentIntention?.y_target === capturedTy;
-            if (sameTarget && myAgent?.pos.x === start.x && myAgent?.pos.y === start.y) {
-                debug(`[PDDL] path applied (${pddlPath.length} steps)`);
-                currentPath = pddlPath;
-            }
-        }).catch(() => {});
+    // Hybrid planning: the push-aware BFS handles ordinary navigation (and the
+    // common single-crate push) instantly, with no subprocess overhead — vital
+    // given the ~50 ms movement tick. The PDDL solver is reserved for the cases
+    // where it actually earns its cost: when BFS finds no route at all, or when
+    // the route touches a crate, where Fast Downward's multi-push reasoning is
+    // both correct (it models the post-push state) and sometimes necessary.
+    if (USE_PDDL && (bfsPath === null || pathTouchesCrate(start, bfsPath))) {
+        debug(`[PDDL] ${start.x},${start.y} -> ${target.x},${target.y} (BFS ${bfsPath === null ? 'blocked' : 'crosses crate'})`);
+        const pddlPath = await getPddlPath(start, target, worldMap, blocked);
+        if (pddlPath) {
+            debug(`[PDDL] path found (${pddlPath.length} steps)`);
+            return pddlPath;
+        }
+        debug(`[PDDL] no plan — using BFS result`);
     }
 
     return bfsPath;
+}
+
+// True when walking `path` from `start` steps onto a tile currently occupied by
+// a crate, i.e. the route involves at least one push.
+function pathTouchesCrate(start: Position, path: string[]): boolean {
+    if (!worldMap || worldMap.crates.size === 0) return false;
+    const crateKeys = new Set([...worldMap.crates.values()].map(c => `${c.pos.x},${c.pos.y}`));
+    let pos = { x: start.x, y: start.y };
+    for (const dir of path) {
+        pos = utils.nextPosition(pos, dir);
+        if (crateKeys.has(`${pos.x},${pos.y}`)) return true;
+    }
+    return false;
 }
 
 async function resilientMove(direction: string, nextPos: Position): Promise<Position | null> {
@@ -362,8 +243,24 @@ async function resilientMove(direction: string, nextPos: Position): Promise<Posi
     return null;
 }
 
+// True when the crate sitting on `cratePos` can be pushed one tile further in
+// `dir`: the landing tile must exist, be a type-5 tile, and be free of crates
+// (matches the server-side push rule in PushAgent.js).
+function isPushableCrate(cratePos: Position, dir: string): boolean {
+    if (!worldMap) return false;
+    const beyond     = utils.nextPosition(cratePos, dir);
+    const beyondType = worldMap.tiles.get(`${beyond.x},${beyond.y}`);
+    if (!beyondType || !beyondType.startsWith('5')) return false;
+    return ![...worldMap.crates.values()].some(c => c.pos.x === beyond.x && c.pos.y === beyond.y);
+}
+
 async function stepTowards(dir: string, nextPos: Position): Promise<boolean> {
-    if ([...worldMap!.crates.values()].some(c => c.pos.x === nextPos.x && c.pos.y === nextPos.y)) {
+    // A crate on the next tile is only a hard obstacle if it cannot be pushed.
+    // To push it the agent steps onto its tile and the server slides the crate
+    // one tile further in the same direction (it must land on a free type-5
+    // tile). The path step is an ordinary move; the server performs the push.
+    const crateAhead = [...worldMap!.crates.values()].some(c => c.pos.x === nextPos.x && c.pos.y === nextPos.y);
+    if (crateAhead && !isPushableCrate(nextPos, dir)) {
         currentPath = null;
         return false;
     }
@@ -479,141 +376,9 @@ socket.onSensing((sensing: any) => {
     bdiStep();
 });
 
-socket.onMsg( async (id: string, name: string, msg: any, reply: ((response: any) => void) | undefined) => {
-    // Peer message from partner agent (JSON with kind: 'LLM_UPDATE')
-    if (name !== godName) {
-        debug(`[Multi-agent] Raw peer message from ${id} (${name}): ${typeof msg} length=${String(msg).length}`);
-        
-        // Auto-discover partner on first non-admin message
-        if (!partnerAgentId) {
-            partnerAgentId = id;
-            console.log(`[Multi-agent] Partner discovered: ${partnerAgentId} (${name})`);
-        }
-        
-        if (id === partnerAgentId) {
-            try {
-                const msgStr = typeof msg === 'string' ? msg : JSON.stringify(msg);
-                if (!msgStr.startsWith('{')) {
-                    debug(`[Multi-agent] Non-JSON peer message from ${name}, ignoring`);
-                    return;
-                }
-                const peerMsg = JSON.parse(msgStr);
-                debug(`[Multi-agent] Parsed peer message: ${JSON.stringify(peerMsg).substring(0, 100)}`);
-                
-                if (peerMsg.kind === 'LLM_UPDATE') {
-                    console.log('[Multi-agent] Received LLM update from master, applying to BDI');
-                    applyLLMUpdates(peerMsg.updates);
-                } else if (peerMsg.kind === 'RENDEZVOUS_ARRIVED') {
-                    console.log('[Rendezvous] Partner arrived at rendezvous tile');
-                    rendezvousPartnerArrived = true;
-                    // Completion is handled in the BDI loop (checks mutual distance on next tick)
-                } else if (peerMsg.kind === 'RENDEZVOUS_TARGET') {
-                    // Master computed the optimal meeting point — update our navigation target.
-                    const rx = Math.round(Number(peerMsg.x));
-                    const ry = Math.round(Number(peerMsg.y));
-                    const idx = llmPendingMissions.findIndex(m => m.type === 'rendezvous');
-                    if (idx >= 0) {
-                        const u = llmPendingMissions[idx].utility;
-                        llmPendingMissions[idx] = new Desire('rendezvous', rx, ry, u);
-                    } else if (llmActiveMission?.type === 'rendezvous') {
-                        llmActiveMission = new Desire('rendezvous', rx, ry, llmActiveMission.utility);
-                        currentIntention = llmActiveMission;
-                        currentPath = null;
-                    }
-                    console.log(`[Rendezvous] Updated meeting point to (${rx},${ry})`);
-                } else if (peerMsg.kind === 'HANDOFF_SLAVE_POS') {
-                    handoffSlavePos = { x: Math.round(Number(peerMsg.x)), y: Math.round(Number(peerMsg.y)) };
-                    console.log(`[Handoff] Master: slave is at (${handoffSlavePos.x},${handoffSlavePos.y})`);
-                } else if (peerMsg.kind === 'HANDOFF_APPROACH') {
-                    // Picker has picked up a parcel and is moving toward us
-                    const px = Number(peerMsg.x);
-                    const py = Number(peerMsg.y);
-                    console.log(`[Handoff] Deliverer: picker at (${px},${py}), heading toward them`);
-                    handoffPhase = 'approach';
-                    if (llmActiveMission?.type === 'handoff_deliverer_approach') {
-                        llmActiveMission.x_target = px;
-                        llmActiveMission.y_target = py;
-                        currentPath = null;
-                    } else {
-                        if (llmActiveMission) llmPendingMissions.unshift(llmActiveMission);
-                        llmActiveMission = null;
-                        clearIntention();
-                        llmPendingMissions.unshift(new Desire('handoff_deliverer_approach', px, py, 9999));
-                    }
-                } else if (peerMsg.kind === 'HANDOFF_DROPPED') {
-                    // Picker dropped the parcel — go pick it up and deliver
-                    const dx = Number(peerMsg.x);
-                    const dy = Number(peerMsg.y);
-                    console.log(`[Handoff] Deliverer: parcel dropped at (${dx},${dy}), picking up`);
-                    handoffRole = null;
-                    handoffPhase = 'idle';
-                    handoffWaitAtMeetStart = null;
-                    if (llmActiveMission?.type === 'handoff_deliverer_approach') {
-                        llmActiveMission = null;
-                        clearIntention();
-                    }
-                    const hdIdx = llmPendingMissions.findIndex(m => m.type === 'handoff_deliverer_approach');
-                    if (hdIdx >= 0) llmPendingMissions.splice(hdIdx, 1);
-                    // Pre-populate worldMap so toPickup is non-empty when slave arrives
-                    if (worldMap && Array.isArray(peerMsg.parcels)) {
-                        handoffExpectedParcelIds = new Set(peerMsg.parcels.map((pd: any) => pd.id));
-                        console.log(`[Handoff] Deliverer: expecting parcel IDs: ${[...handoffExpectedParcelIds].join(', ')}`);
-                        for (const pd of peerMsg.parcels) {
-                            worldMap.parcels.set(pd.id, new Parcel(
-                                { id: pd.id, x: dx, y: dy, reward: pd.reward, carriedBy: null }, Date.now(),
-                            ));
-                        }
-                    }
-                    llmPendingMissions.unshift(new Desire('go_pickup', dx, dy, 9999));
-                } else {
-                    debug(`[Multi-agent] Peer message has unexpected kind: ${peerMsg.kind}`);
-                }
-            } catch (err) {
-                console.warn('[Multi-agent] Failed to parse peer message:', err instanceof Error ? err.message : err);
-                debug(`[Multi-agent] Message was: ${String(msg).substring(0, 200)}`);
-            }
-        } else {
-            debug(`[Multi-agent] Ignoring message from ${id}; expected partner ${partnerAgentId}`);
-        }
-        return;
-    }
-
-    // Admin message — only the master processes via LLM
-    if (!useLLM || !IS_MASTER) return;
-    if (!llm) { console.log("[LLM] client not ready yet, skipping message"); return; }
-
-    console.log(`[LLM] msg from ${name}(${id}): "${msg}"`);
-
-    try {
-        const result = await llm.processMessage(msg, myAgent ? { x: myAgent.pos.x, y: myAgent.pos.y } : null);
-        console.log(`[LLM] reply: "${result.reply || "(none)"}"`);
-
-        applyLLMUpdates(result.updates);
-
-        // Forward processed updates (and any conversational reply) to slave BEFORE calling reply()
-        if (partnerAgentId) {
-            try {
-                await socket.emitSay(partnerAgentId, JSON.stringify({ kind: 'LLM_UPDATE', updates: result.updates, reply: result.reply }));
-                console.log(`[Multi-agent] Forwarded LLM update to slave ${partnerAgentId}`);
-            } catch (err) {
-                console.warn('[Multi-agent] Failed to forward update to slave:', err instanceof Error ? err.message : err);
-            }
-        } else {
-            console.log('[Multi-agent] No partner known yet — update not forwarded');
-        }
-
-        // Send reply to admin AFTER forwarding to slave
-        if (result.reply) {
-            if (reply) {
-                reply(result.reply);
-            } else {
-                socket.emitShout(result.reply);
-            }
-        }
-    } catch (err) {
-        console.error("[LLM] processMessage error (agent continues):", err instanceof Error ? err.message : err);
-    }
-});
+socket.onMsg((id: string, name: string, msg: any, reply: ((response: any) => void) | undefined) =>
+    handleMessage(commsCtx, id, name, msg, reply),
+);
 
 // ── BDI loop ──────────────────────────────────────────────────────────────────
 
@@ -656,7 +421,7 @@ async function bdiStep(): Promise<void> {
                     ...llmBlockedTiles
                 ]);
 
-                let meet = computeMeetingPoint(myAgent.pos, partnerPos, blocked);
+                let meet = computeMeetingPoint(worldMap, myAgent.pos, partnerPos, blocked);
                 if (!meet) {
                     // computeMeetingPoint only returns null when the master's worldMap has no
                     // reachable walkable tiles at all — use partner's position as last resort.

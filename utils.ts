@@ -1,6 +1,22 @@
 import { bfsFlood, PathFinder } from './path_finding.ts';
 export { bfsFlood, PathFinder };
 import type { Position, Parcel, World, OpponentAgent, Crate } from './BDI/Belief.ts';
+import type { Desire } from './BDI/Desire.ts';
+
+// ── Mission/intention helpers ──────────────────────────────────────────────────
+
+// Two missions are "the same" when they share type and target tile.
+export function sameMission(a: Desire | null, b: Desire | null): boolean {
+    return !!a && !!b &&
+        a.type === b.type &&
+        a.x_target === b.x_target &&
+        a.y_target === b.y_target;
+}
+
+// Canonical string key for a mission ("type:x,y"), used for stuck/blocked tracking.
+export function missionKey(mission: Desire): string {
+    return `${mission.type}:${mission.x_target},${mission.y_target}`;
+}
 
 export function get_distance(position1: Position, position2: Position): number {
     return Math.abs(position1.x - position2.x) + Math.abs(position1.y - position2.y);
